@@ -15,8 +15,8 @@ if __name__ == "__main__":
                       [10, 11, 14, 13], [13, 14, 17, 16]])
 
     cells = np.array([[0, 1, 6, 10, 12, 16], [2, 8, 11, 14, 18, 0],
-                     [3, 4, 7, 14, 17, 1], [5, 9, 15, 19, 2, 3]])
+                      [3, 4, 7, 13, 17, 1], [5, 9, 15, 19, 2, 3]])
 
     mesh = Mesh(points, faces, cells, 5)
 
-    print(mesh.get_cell_volumes())
+    print(mesh.cell_volumes())
