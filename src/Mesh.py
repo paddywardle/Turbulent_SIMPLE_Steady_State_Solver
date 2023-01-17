@@ -30,28 +30,12 @@ class Mesh:
         cell_vols = np.array([])
 
         for cell in self.cells:
-
-            min_vertex = np.array(self.points[self.faces[cell[0]][0]])
-
-            max_vertex = np.array(self.points[self.faces[cell[0]][0]])
-            
-            for face_num in cell:
-
-                face = self.faces[face_num]
-
-                for vertex_num in face:
-
-                    vertex = self.points[vertex_num]
-                    
-                    for i in range(len(vertex)):
-                        if vertex[i] < min_vertex[i]:
-                            min_vertex[i] = vertex[i]
-                        elif vertex[i] > max_vertex[i]:
-                            max_vertex[i] = vertex[i]
-            print(min_vertex, max_vertex)
-            volume = np.prod(max_vertex-min_vertex)
-
-            cell_vols = np.append(cell_vols, volume)
+            cell_faces = np.unique(np.concatenate(self.faces[cell]))
+            cell_points = self.points[cell_faces]
+            cell_min_points = cell_points.min(axis=0)
+            cell_max_points = cell_points.max(axis=0)
+            cell_vol = np.prod(cell_max_points - cell_min_points)
+            cell_vols = np.append(cell_vols, cell_vol)
 
         return cell_vols
 
