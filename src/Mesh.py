@@ -9,6 +9,14 @@ class Mesh:
         self.cells = cells
         self.boundary_patches = boundary_patches
 
+    def __repr__(self):
+
+        return #class MyClass(instance_variables = .....)
+
+    def __str__(self):
+
+        return # mesh contains this many points, faces, cells, boundaries etcccc using num_points, num_faces, etcccc
+
     def num_points(self):
 
         return len(self.points)
@@ -41,7 +49,17 @@ class Mesh:
 
     def face_area_vectors(self):
 
-        pass
+        face_area_vecs = np.array([])
+
+        for face in self.faces:
+            face_points = self.points[face]
+            face_min_points = face_points.min(axis=0)
+            face_max_points = face_points.max(axis=0)
+            point_diff = face_max_points-face_min_points
+            face_area = np.prod(point_diff[point_diff > 0])
+            face_area_vecs = np.append(face_area_vecs, face_area)
+
+        return face_area_vecs
 
     def cell_centres(self):
 
