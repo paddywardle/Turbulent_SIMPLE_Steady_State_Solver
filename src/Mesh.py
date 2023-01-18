@@ -67,7 +67,17 @@ class Mesh:
 
     def face_centres(self):
 
-        pass
+        face_cens = []
+
+        for face in self.faces:
+            face_points = self.points[face]
+            face_sums = face_points.sum(axis=0)
+            face_cen = np.divide(face_sums, len(face_points))
+            face_cens.append(face_cen)
+
+        face_cens = np.asarray(face_cens)
+
+        return face_cens
 
     def boundary_face_cells(self):
 
