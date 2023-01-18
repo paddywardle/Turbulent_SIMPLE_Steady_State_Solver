@@ -63,7 +63,6 @@ class Mesh:
             int: value representing the number of cells in the mesh instance.
         """
 
-
         return len(self.cells)
 
     def num_boundary_patches(self):
@@ -86,13 +85,19 @@ class Mesh:
             np.array: array containing the volume of each cell in the mesh
         """
 
+        # empty array for cell volumes to be added to
         cell_vols = np.array([])
 
         for cell in self.cells:
+            # get unique faces that make up the cell
             cell_faces = np.unique(np.concatenate(self.faces[cell]))
             cell_points = self.points[cell_faces]
+            
+            # get min and max x, y and z points for the cell
             cell_min_points = cell_points.min(axis=0)
             cell_max_points = cell_points.max(axis=0)
+            
+            # multiply difference between min and max points to get cell volume
             cell_vol = np.prod(cell_max_points - cell_min_points)
             cell_vols = np.append(cell_vols, cell_vol)
 
@@ -107,13 +112,21 @@ class Mesh:
             np.array: array containing the face area vector of each cell in the mesh
         """
 
+        # empty array for cell face area vectors
         face_area_vecs = np.array([])
 
         for face in self.faces:
+            # get points that make up face
             face_points = self.points[face]
+
+            # get min and max x, y and z points for the face
             face_min_points = face_points.min(axis=0)
             face_max_points = face_points.max(axis=0)
+
+            # calculate difference between min and max points
             point_diff = face_max_points-face_min_points
+
+            # multiply together points that are greater than 0 to get face area
             face_area = np.prod(point_diff[point_diff > 0])
             face_area_vecs = np.append(face_area_vecs, face_area)
 
@@ -128,11 +141,15 @@ class Mesh:
             np.array: array containing the cell centres of each cell in the mesh
         """
 
+        # empty list for cell centre coordinates
         cell_cens = []
 
         for cell in self.cells:
+            # get unique faces that make up the cell
             cell_faces = np.unique(np.concatenate(self.faces[cell]))
             cell_points = self.points[cell_faces]
+
+            # sum up cell coordinates and divide by number of points, to get cell centre
             points_sums = cell_points.sum(axis=0)
             cell_cen = np.divide(points_sums, len(cell_points))
             cell_cens.append(cell_cen)
@@ -150,10 +167,14 @@ class Mesh:
             np.array: array containing the face centres of each face in the mesh
         """
 
+        # empty list for face centre coordinates
         face_cens = []
 
         for face in self.faces:
+            # get points that make up the face
             face_points = self.points[face]
+
+            # sum up points and divide by number of points, to get face centre
             points_sums = face_points.sum(axis=0)
             face_cen = np.divide(points_sums, len(face_points))
             face_cens.append(face_cen)
