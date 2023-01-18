@@ -12,29 +12,79 @@ class Mesh:
 
     def __repr__(self):
 
+        """
+        Dunder method for the unambiguous representation of a mesh instance.
+
+        Returns:
+            str: representation of mesh instance
+        """
+
         return f"Mesh(points={self.points},\n faces={self.faces},\n cells={self.cells},\n boundary_patches={self.boundary_patches})"
 
     def __str__(self):
+
+        """
+        Dunder method for the readable string representation of a mesh instance.
+
+        Returns:
+            str: string representation of mesh instance
+        """
 
         return f"""Mesh Class with: {self.num_points()} points, {self.num_faces()} faces, {self.num_cells()} cells, {self.num_boundary_patches()} boundary patches"""
 
     def num_points(self):
 
+        """
+        This function returns the number of points in the mesh instance. This is done using the points instance variable.
+
+        Returns:
+            int: value representing the number of points in the mesh instance.
+        """
+
         return len(self.points)
 
     def num_faces(self):
+
+        """
+        This function returns the number of faces in the mesh instance. This is done using the faces instance variable.
+
+        Returns:
+            int: value representing the number of faces in the mesh instance.
+        """
 
         return len(self.faces)
 
     def num_cells(self):
 
+        """
+        This function returns the number of cells in the mesh instance. This is done using the cells instance variable.
+
+        Returns:
+            int: value representing the number of cells in the mesh instance.
+        """
+
+
         return len(self.cells)
 
     def num_boundary_patches(self):
 
+        """
+        This function returns the number of boundary patches in the mesh instance. This is done using the boundary_patches instance variable.
+
+        Returns:
+            int: value representing the number of boundary patches in the mesh instance.
+        """
+
         return len(self.boundary_patches)
 
     def cell_volumes(self):
+
+        """
+        This function returns a numpy array of the volumes of each cell in the mesh.
+
+        Returns:
+            np.array: array containing the volume of each cell in the mesh
+        """
 
         cell_vols = np.array([])
 
@@ -50,6 +100,13 @@ class Mesh:
 
     def face_area_vectors(self):
 
+        """
+        This function returns a numpy array of the face area vector for each face in the mesh instance.
+
+        Returns:
+            np.array: array containing the face area vector of each cell in the mesh
+        """
+
         face_area_vecs = np.array([])
 
         for face in self.faces:
@@ -63,6 +120,13 @@ class Mesh:
         return face_area_vecs
 
     def cell_centres(self):
+
+        """
+        This function returns a numpy array of the cell centre for each cell in the mesh instance.
+
+        Returns:
+            np.array: array containing the cell centres of each cell in the mesh
+        """
 
         cell_cens = []
 
@@ -78,6 +142,13 @@ class Mesh:
         return cell_cens
 
     def face_centres(self):
+
+        """
+        This function returns a numpy array of the face centre for each face in the mesh instance.
+
+        Returns:
+            np.array: array containing the face centres of each face in the mesh
+        """
 
         face_cens = []
 
