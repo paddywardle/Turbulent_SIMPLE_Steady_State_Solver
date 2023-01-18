@@ -4,6 +4,7 @@ import numpy as np
 class Mesh:
 
     def __init__(self, points, faces, cells, boundary_patches):
+
         self.points = points
         self.faces = faces
         self.cells = cells
@@ -11,7 +12,7 @@ class Mesh:
 
     def __repr__(self):
 
-        return "x"
+        return f"Mesh(points={self.points},\n faces={self.faces},\n cells={self.cells},\n boundary_patches={self.boundary_patches})"
 
     def __str__(self):
 
