@@ -11,11 +11,11 @@ class Mesh:
 
     def __repr__(self):
 
-        return #class MyClass(instance_variables = .....)
+        return "x"
 
     def __str__(self):
 
-        return # mesh contains this many points, faces, cells, boundaries etcccc using num_points, num_faces, etcccc
+        return f"""Mesh Class with: {self.num_points()} points, {self.num_faces()} faces, {self.num_cells()} cells, {self.num_boundary_patches()} boundary patches"""
 
     def num_points(self):
 
