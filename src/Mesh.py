@@ -63,7 +63,18 @@ class Mesh:
 
     def cell_centres(self):
 
-        pass
+        cell_cens = []
+
+        for cell in self.cells:
+            cell_faces = np.unique(np.concatenate(self.faces[cell]))
+            cell_points = self.points[cell_faces]
+            points_sums = cell_points.sum(axis=0)
+            cell_cen = np.divide(points_sums, len(cell_points))
+            cell_cens.append(cell_cen)
+
+        cell_cens = np.asarray(cell_cens)
+
+        return cell_cens
 
     def face_centres(self):
 
@@ -71,8 +82,8 @@ class Mesh:
 
         for face in self.faces:
             face_points = self.points[face]
-            face_sums = face_points.sum(axis=0)
-            face_cen = np.divide(face_sums, len(face_points))
+            points_sums = face_points.sum(axis=0)
+            face_cen = np.divide(points_sums, len(face_points))
             face_cens.append(face_cen)
 
         face_cens = np.asarray(face_cens)
