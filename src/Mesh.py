@@ -104,11 +104,11 @@ class Mesh:
                     if i == (len(face_points)-1):
                         vertices = np.concatenate(([face_points[i]], [face_points[0]], [face_centre], [cell_centre]), axis=0)
                         coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
-                        cell_vol += np.linalg.det(coord_matrix) / 6
+                        cell_vol += abs(np.linalg.det(coord_matrix) / 6)
                         continue
                     vertices = np.concatenate(([face_points[i]], [face_points[i+1]], [face_centre], [cell_centre]), axis=0)
                     coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
-                    cell_vol += np.linalg.det(coord_matrix) / 6
+                    cell_vol += abs(np.linalg.det(coord_matrix) / 6)
             cell_vols = np.append(cell_vols, cell_vol)
         
         return cell_vols
@@ -137,54 +137,27 @@ class Mesh:
         """
 
         # empty array for cell face area vectors
-        face_area_vecs = np.array([])
+        face_area_vecs = []
 
         for face in self.faces:
             # get points that make up face
             face_points = self.points[face]
 
+            # sum up points and divide by number of points, to get face centre
+            points_sums = face_points.sum(axis=0)
+            face_cen = np.divide(points_sums, len(face_points))
 
-            # get min and max x, y and z points for the face
-            face_min_points = face_points.min(axis=0)
-            face_max_points = face_points.max(axis=0)
+            face_area_vec = 0
 
-            # calculate difference between min and max points
-            point_diff = face_max_points-face_min_points
+            for i in range(len(face_points)):
+                if i == (len(face_points)-1):
+                    face_area_vec += np.cross(face_points[i]-face_cen, face_points[0]-face_cen) / 2
+                    continue
+                face_area_vec += np.cross(face_points[i]-face_cen, face_points[i+1]-face_cen) / 2
+            
+            face_area_vecs.append(face_area_vec)
 
-            # multiply together points that are greater than 0 to get face area
-            face_area = np.prod(point_diff[point_diff > 0])
-            face_area_vecs = np.append(face_area_vecs, face_area)
-
-        return face_area_vecs
-
-    def face_area_vectors(self):
-
-        """
-        This function returns a numpy array of the face area vector for each face in the mesh instance.
-
-        Returns:
-            np.array: array containing the face area vector of each cell in the mesh
-        """
-
-        # empty array for cell face area vectors
-        face_area_vecs = np.array([])
-
-        for face in self.faces:
-            # get points that make up face
-            face_points = self.points[face]
-
-            # get min and max x, y and z points for the face
-            face_min_points = face_points.min(axis=0)
-            face_max_points = face_points.max(axis=0)
-
-            # calculate difference between min and max points
-            point_diff = face_max_points-face_min_points
-
-            # multiply together points that are greater than 0 to get face area
-            face_area = np.prod(point_diff[point_diff > 0])
-            face_area_vecs = np.append(face_area_vecs, face_area)
-
-        return face_area_vecs
+        return np.asarray(face_area_vecs)
 
     def cell_centres(self):
 
@@ -243,7 +216,11 @@ class Mesh:
 
     def neighbouring_cells(self):
 
-        pass
+        neighbours = np.array([])
+
+        for cell in self.cells:
+
+            
 
     def cell_owner_neighbour(self):
 
