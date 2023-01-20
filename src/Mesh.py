@@ -99,16 +99,25 @@ class Mesh:
             for face in cell:
                 # get points that make up the face
                 face_points = self.points[self.faces[face]]
+                # get face centre
                 face_centre = np.divide(face_points.sum(axis=0), len(face_points))
                 for i in range(len(face_points)):
+                    # looping to beginning of list if current iteration is at the end of the list
                     if i == (len(face_points)-1):
+                        # array of current tetrahedron vertices
                         vertices = np.concatenate(([face_points[i]], [face_points[0]], [face_centre], [cell_centre]), axis=0)
+                        # adding ones to vertices to get coordinate matrix (square matrix)
                         coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
+                        # volume of tetrahedron is the determinant of coordinate matrix divided by 6, adding it to current volume
                         cell_vol += abs(np.linalg.det(coord_matrix) / 6)
                         continue
+                    # array of current tetrahedron vertices
                     vertices = np.concatenate(([face_points[i]], [face_points[i+1]], [face_centre], [cell_centre]), axis=0)
+                    # adding ones to vertices to get coordinate matrix (square matrix)
                     coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
+                    # volume of tetrahedron is the determinant of coordinate matrix divided by 6, adding it to volume of current cell
                     cell_vol += abs(np.linalg.det(coord_matrix) / 6)
+            
             cell_vols = np.append(cell_vols, cell_vol)
         
         return cell_vols
