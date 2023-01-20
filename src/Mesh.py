@@ -211,8 +211,20 @@ class Mesh:
         return face_cens
 
     def boundary_face_cells(self):
+ 
+        boundary_face_cells = []
 
-        pass
+        for boundary_patch in self.boundary_patches:
+            per_patch = []
+            if type(boundary_patch) == str:
+                boundary_face_cells.append(boundary_patch)
+                continue
+            for boundary_face in boundary_patch:
+                per_patch += [i for i in range(len(self.cells)) if boundary_face in self.cells[i]]
+            
+            boundary_face_cells.append(set(per_patch))
+
+        return boundary_face_cells
 
     def neighbouring_cells(self):
 
