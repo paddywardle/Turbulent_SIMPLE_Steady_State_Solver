@@ -257,5 +257,23 @@ class Mesh:
 
     def cell_owner_neighbour(self):
 
-        pass
+        """
+        This function returns an array with lists referring to the owner and neighbour of each face of the mesh.
 
+        Returns:
+            np.array: array containing face owner and neighbours, where neighbour = -1 for boundary faces
+        """
+
+        owner = []
+        neighbour = []
+
+        for face in range(len(self.faces)):
+            cells_with_face = np.where(self.cells == face)
+            if len(cells_with_face[0]) == 1:
+                owner.append(cells_with_face[0][0])
+                neighbour.append(-1)
+                continue
+            owner.append(cells_with_face[0][0])
+            neighbour.append(cells_with_face[0][1])
+        
+        return np.column_stack((owner, neighbour))
