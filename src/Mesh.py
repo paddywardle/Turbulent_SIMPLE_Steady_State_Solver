@@ -244,13 +244,18 @@ class Mesh:
 
         neighbours = []
 
+
         for i in range(len(self.cells)):
             current_neighbours = []
+            # looping through cells again
             for j in range(len(self.cells)):
+                # skipping as don't want to compare cell to itself
                 if i == j:
                     continue
+                # test to see if they share faces - if they do append cell number to current_neighbour list
                 if len(set(self.cells[i]) & set(self.cells[j])) != 0:
                     current_neighbours.append(j)
+            # append current_neighbour to overall neighbours list corresponding to cells label
             neighbours.append(current_neighbours)
 
         return np.asarray(neighbours)
