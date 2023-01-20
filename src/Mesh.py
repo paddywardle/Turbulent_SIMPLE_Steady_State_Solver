@@ -211,6 +211,13 @@ class Mesh:
         return face_cens
 
     def boundary_face_cells(self):
+
+        """
+        This function returns the cells that boundary faces are connected to on a per-patch basis.
+
+        Returns:
+            np.array: array containing cells that each boundary patch is connected to
+        """
  
         boundary_face_cells = []
 
