@@ -235,6 +235,13 @@ class Mesh:
 
     def neighbouring_cells(self):
 
+        """
+        This function returns an array with lists referring to the cells each cell is connected to.
+
+        Returns:
+            np.array: array containing lists of cell neighbours
+        """
+
         neighbours = []
 
         for i in range(len(self.cells)):
