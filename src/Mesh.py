@@ -159,9 +159,12 @@ class Mesh:
             face_area_vec = 0
 
             for i in range(len(face_points)):
+                # looping to beginning if at the end of the list
                 if i == (len(face_points)-1):
+                    # cross product of length of from centre of face to face vertices to get face area vector for current triangle, adding to overall face area vector
                     face_area_vec += np.cross(face_points[i]-face_cen, face_points[0]-face_cen) / 2
                     continue
+                # cross product of length of from centre of face to face vertices to get face area vector for current triangle, adding to overall face area vector
                 face_area_vec += np.cross(face_points[i]-face_cen, face_points[i+1]-face_cen) / 2
             
             face_area_vecs.append(face_area_vec)
