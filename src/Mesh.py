@@ -223,12 +223,15 @@ class Mesh:
 
         for boundary_patch in self.boundary_patches:
             per_patch = []
+            # skipping patch types (testing for values that are strings)
             if type(boundary_patch) == str:
                 boundary_face_cells.append(boundary_patch)
                 continue
+            # looping through faces in boundary patches
             for boundary_face in boundary_patch:
+                # getting cells that contain current boundary face
                 per_patch += [i for i in range(len(self.cells)) if boundary_face in self.cells[i]]
-            
+            # appending unique faces to list (set gets unique values)
             boundary_face_cells.append(set(per_patch))
 
         return boundary_face_cells
