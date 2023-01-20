@@ -216,11 +216,18 @@ class Mesh:
 
     def neighbouring_cells(self):
 
-        neighbours = np.array([])
+        neighbours = []
 
-        for cell in self.cells:
+        for i in range(len(self.cells)):
+            current_neighbours = []
+            for j in range(len(self.cells)):
+                if i == j:
+                    continue
+                if len(set(self.cells[i]) & set(self.cells[j])) != 0:
+                    current_neighbours.append(j)
+            neighbours.append(current_neighbours)
 
-            
+        return np.asarray(neighbours)
 
     def cell_owner_neighbour(self):
 
