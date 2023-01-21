@@ -1,5 +1,6 @@
 from Mesh import Mesh
 import numpy as np
+import time
 
 if __name__ == "__main__":
 
@@ -17,6 +18,11 @@ if __name__ == "__main__":
     cells = np.array([[0, 1, 6, 10, 12, 16], [2, 8, 11, 14, 18, 0],
                       [3, 4, 7, 13, 17, 1], [5, 9, 15, 19, 2, 3]])
 
-    mesh = Mesh(points, faces, cells, 5)
+    boundary_patches = np.array(["movingWall", [4, 5], "fixedWalls", [6, 7, 8, 9, 10, 11], 
+                                 "frontAndBack", [12, 13, 14, 15, 16, 17, 18, 19]], dtype=object)
 
-    print(mesh.cell_volumes())
+    mesh = Mesh(points, faces, cells, boundary_patches)
+
+    tim = time.time()
+    print(mesh.cell_owner_neighbour())
+    print(time.time() - tim)
