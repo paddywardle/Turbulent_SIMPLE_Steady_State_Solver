@@ -45,5 +45,13 @@ class SparseMatrixCR:
 
     def from_dense(self, matrix):
 
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                if matrix[i][j] == self.default:
+                    continue
+                self.data = np.append(self.data, matrix[i][j])
+                self.col_array = np.append(self.col_array, j)
+                self.row_ptrs = self.row_ptrs.append(self.row_ptrs, )
+
 
 
