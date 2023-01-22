@@ -1,14 +1,16 @@
+import numpy as np
+
 class SparseMatrixCR:
 
-    def __init__(self, rows, cols, data, default=0):
+    def __init__(self, rows, cols, data=np.array([]), col_array=np.array([]), row_ptrs=np.array([]), default=0):
 
         self.rows = rows
         self.cols = cols
         self.default = default
         # initialise as an empty dictionary
-        self.data = []
-        self.col_array = []
-        self.row_ptrs = []
+        self.data = data
+        self.col_array = col_array
+        self.row_ptrs = row_ptrs
 
     def __getitem__(self, key):
 
@@ -40,3 +42,8 @@ class SparseMatrixCR:
         # testing to see if the key is already in self.data, if it is delete it so it will appear as 0 (sparse matrix format)
         elif key in self.data:
             del self.data[key]
+
+    def from_dense(self, matrix):
+
+
+
