@@ -14,6 +14,15 @@ class SparseMatrixCR:
 
     def __getitem__(self, key):
 
+        """
+        Dunder method for operator overload of [] operator for getting a value based on key.
+
+        Args:
+            key (tuple): contains indices of value being requests (row, column)
+        Returns:
+            int: value at key index.
+        """
+
         # testing to see if key is out of matrix dimensions
         if (key[0] >= self.rows) or (key[1] >= self.cols):
             print("Key is out of Matrix dimensions.")
@@ -30,6 +39,15 @@ class SparseMatrixCR:
     
     def __setitem__(self, key, val):
 
+        """
+        Dunder method for operator overload of [] operator for setting a value based on a key and value.
+
+        Args:
+            key (tuple): contains indices of value being set (row, column)
+            val (float): value being added to sparse matrix at key.
+
+        """
+
         # testing to see if key is out of matrix dimensions
         if (key[0] >= self.rows) or (key[1] >= self.cols):
             print("Key is out of Matrix dimensions.")
@@ -45,13 +63,19 @@ class SparseMatrixCR:
 
     def from_dense(self, matrix):
 
+        """
+        This method converts a dense matrix argument to a sparse matrix format.
+
+        Args:
+            key (tuple): contains indices of value being requests (row, column)
+
+        """
+
         for i in range(len(matrix)):
             for j in range(len(matrix[i])):
+                if j == 0:
+                    self.row_ptrs = self.row_ptrs.append(self.row_ptrs, len(self.col_array))
                 if matrix[i][j] == self.default:
                     continue
                 self.data = np.append(self.data, matrix[i][j])
                 self.col_array = np.append(self.col_array, j)
-                self.row_ptrs = self.row_ptrs.append(self.row_ptrs, )
-
-
-
