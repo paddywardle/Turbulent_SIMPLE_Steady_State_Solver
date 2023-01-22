@@ -2,7 +2,6 @@ from typing import List
 import numpy as np
 from scipy.spatial import ConvexHull
 
-
 class Mesh:
 
     def __init__(self, points, faces, cells, boundary_patches):
