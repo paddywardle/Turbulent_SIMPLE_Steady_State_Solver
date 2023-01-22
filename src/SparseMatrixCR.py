@@ -6,11 +6,10 @@ class SparseMatrixCR:
         self.cols = cols
         self.default = default
         # initialise as an empty dictionary
-        self.data = {}
-        # if class is initialised with data
-        if data:
-            self.data = data
-    
+        self.data = []
+        self.col_array = []
+        self.row_ptrs = []
+
     def __getitem__(self, key):
 
         # testing to see if key is out of matrix dimensions
@@ -19,8 +18,14 @@ class SparseMatrixCR:
         elif (key[0] < 0) or (key[1] < 0):
             print("Negative key is invalid.")
         # return data from self.data with corresponding key if it's there, otherwise return 0 (sparse matrix)
-        return self.data.get(key, self.default)
-
+        row_start = self.row_ptrs[key[0]]
+        row_end = self.row_ptrs[key[0]+1]
+        row_vals = self.data[row_start:row_end]
+        col_indices = self.col_array[row_start:row_end]
+        if key[1] in col_indices:
+            return row_vals[col_indices.index(key[1])]
+        return self.default
+    
     def __setitem__(self, key, val):
 
         # testing to see if key is out of matrix dimensions
