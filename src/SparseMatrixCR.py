@@ -12,6 +12,10 @@ class SparseMatrixCR:
         self.col_array = col_array
         self.row_ptrs = row_ptrs
 
+    def __str__(self):
+
+        return "SparseMatrixCR"
+
     def __getitem__(self, key):
 
         """
@@ -51,8 +55,10 @@ class SparseMatrixCR:
         # testing to see if key is out of matrix dimensions
         if (key[0] >= self.rows) or (key[1] >= self.cols):
             print("Key is out of Matrix dimensions.")
+            return
         elif (key[0] < 0) or (key[1] < 0):
             print("Negative key is invalid.")
+            return
         # testing if value is zero
         if val != self.default:
             # adding new value to self.data with corresponding key
@@ -71,11 +77,19 @@ class SparseMatrixCR:
 
         """
 
+        data = []
+        col_array = []
+        row_ptrs = []
+
         for i in range(len(matrix)):
             for j in range(len(matrix[i])):
                 if j == 0:
-                    self.row_ptrs = self.row_ptrs.append(self.row_ptrs, len(self.col_array))
+                    row_ptrs.append(len(self.col_array))
                 if matrix[i][j] == self.default:
                     continue
-                self.data = np.append(self.data, matrix[i][j])
-                self.col_array = np.append(self.col_array, j)
+                data.append(matrix[i][j])
+                col_array.append(j)
+
+        self.data = data
+        self.col_array = col_array
+        self.row_ptrs = row_ptrs
