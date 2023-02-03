@@ -26,26 +26,36 @@ class LinearSystem:
 
             diag_cont = 0
             neighbours = self.mesh.neighbouring_cells()[i]
-
-            # THIS DOESN'T GET THE CORRECT FACE AREA VECTOR!
-            area_mag = np.linalg.norm(self.mesh.face_area_vectors()[i])
+            face_area_vectors = self.mesh.face_area_vectors()
 
             # ADD LOGIC FOR THE FACE OWNER!
+            cell_faces = self.mesh.cells[i]
 
             for j in neighbours:
 
                 off_diag = 0
 
+                neighbour_faces = self.mesh.cells[j]
+                shared_face = list(set(cell_faces).intersection(neighbour_faces))[0]
+                owner_neighbour = self.mesh.cell_owner_neighbour()[shared_face]
+
+                if owner_neighbour[0] != i:
+                    sf = face_area_vectors[shared_face]
+                else:
+                    sf = -face_area_vectors[shared_face]
+
+                area_mag = np.linalg.norm(sf)
+
                 # second order postulation for face area velocity
                 u_face = u[i] + dx * abs(u[i] - u[j])
 
                 # convective contribution
-                diag_cont += max(area_mag * u_face, 0)
-                off_diag += min(area_mag * u_face, 0)
+                diag_cont += max(sf[0] * u_face, 0)
+                off_diag += min(sf[0] * u_face, 0)
 
                 # diffusion contributions
-                diag_cont += -self.viscoity * area_mag / dx
-                off_diag += self.viscoity * area_mag / dx
+                diag_cont += -self.viscoity * abs(sf[0]) / dx
+                off_diag += self.viscoity * sf[0] / dx
 
                 A[i, j] = off_diag
             
@@ -70,7 +80,7 @@ class LinearSystem:
 
         return np.zeros((N, 1)) 
 
-    def gauss_seidel(self, A, b, tol=1e-1, maxIts=1000):
+    def gauss_seidel(self, A, b, tol=1e-6, maxIts=1000):
 
         """
         This function uses the Gauss-Seidel algorithm to solve the linear system.
@@ -86,20 +96,20 @@ class LinearSystem:
         """
 
         it = 0
-
+        # set initial guess for x and initial residual value
         x_initial = np.ones(b.shape)
         x = x_initial
-        res = np.linalg.norm(x) / np.linalg.norm(x_initial)
-        lower_tri = np.tril(A)
-        strictly_upper_tri = np.triu(A, 1)
+        res_initial = np.abs(b - np.matmul(A, x_initial)).sum()
+        res = np.abs(b - np.matmul(A, x)).sum() / res_initial
         
+        # while number iterations is less than 
         while (it < maxIts) and (res > tol):
 
             lower_tri = np.tril(A)
             strictly_upper_tri = np.triu(A, 1)
             x_plus1 = np.matmul(np.linalg.inv(lower_tri), (b - np.matmul(strictly_upper_tri, x)))
             x = x_plus1
-            res = np.linalg.norm(x) / np.linalg.norm(x_initial)
+            res = np.abs(b - np.matmul(A, x)).sum() / res_initial
             it += 1
         
         print(f"Gauss-Seidel Final Iterations = {it}")
