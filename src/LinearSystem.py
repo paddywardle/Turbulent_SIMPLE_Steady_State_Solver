@@ -14,6 +14,8 @@ class LinearSystem:
         """
         This function discretises the momentum equation to get the diagonal and off-diagonal contributions to the linear system.
 
+        Args:
+            u (np.array): current velocity field of the system
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
@@ -44,18 +46,16 @@ class LinearSystem:
                 else:
                     sf = -face_area_vectors[shared_face]
 
-                area_mag = np.linalg.norm(sf)
-
                 # second order postulation for face area velocity
-                u_face = u[i] + dx * abs(u[i] - u[j])
+                u_face = u[i][i] + sf[0] * abs(u[i][i] - u[i][j])
 
                 # convective contribution
-                diag_cont += max(sf[0] * u_face, 0)
-                off_diag += min(sf[0] * u_face, 0)
+                diag_cont += max(sf[1] * u_face, 0)
+                off_diag += min(sf[1] * u_face, 0)
 
                 # diffusion contributions
-                diag_cont += -self.viscoity * abs(sf[0]) / dx
-                off_diag += self.viscoity * sf[0] / dx
+                diag_cont += -self.viscoity * abs(sf[1]) / dx#sf[1] <- FIX THIS
+                off_diag += self.viscoity * abs(sf[1]) / dx#sf[1] <- FIX THIS
 
                 A[i, j] = off_diag
             
@@ -99,7 +99,7 @@ class LinearSystem:
         # set initial guess for x and initial residual value
         x_initial = np.ones(b.shape)
         x = x_initial
-        res_initial = np.abs(b - np.matmul(A, x_initial)).sum()
+        res_initial = np.abs(b - np.matmul(A, x_initial)).sum() # Udine and Jasak <- ADD REFERENCE
         res = np.abs(b - np.matmul(A, x)).sum() / res_initial
         
         # while number iterations is less than 
@@ -109,7 +109,7 @@ class LinearSystem:
             strictly_upper_tri = np.triu(A, 1)
             x_plus1 = np.matmul(np.linalg.inv(lower_tri), (b - np.matmul(strictly_upper_tri, x)))
             x = x_plus1
-            res = np.abs(b - np.matmul(A, x)).sum() / res_initial
+            res = np.abs(b - np.matmul(A, x)).sum() / res_initial # Udine and Jasak <- ADD REFERENCE
             it += 1
         
         print(f"Gauss-Seidel Final Iterations = {it}")
