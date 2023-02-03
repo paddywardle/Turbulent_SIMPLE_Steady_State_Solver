@@ -12,7 +12,7 @@ class LinearSystem:
     def A_disc(self, u, dx):
 
         """
-        This function discretises the momentum equation to get the contributions to the linear system
+        This function discretises the momentum equation to get the diagonal and off-diagonal contributions to the linear system.
 
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
@@ -57,12 +57,53 @@ class LinearSystem:
 
     def b_disc(self):
 
+        """
+        This function discretises the momentum equation to get the source contributions to the linear system.
+
+        Returns:
+            np.array: N x 1 matrix defining the source contributions to the linear system.
+
+        """
+
         # steady state simulation so will be a vector of zeros
         N = len(self.mesh.cells)
 
         return np.zeros((N, 1)) 
 
-    def solver(self):
+    def gauss_seidel(self, A, b, tol=1e-1, maxIts=1000):
 
-        pass
+        """
+        This function uses the Gauss-Seidel algorithm to solve the linear system.
+
+        Args:
+            A (np.array): array containing the diagonal and off-diagonal contributions to the linear system.
+            b (np.array): array containing the source contributions to the linear system.
+            tol (float): tolerance for algorithm convergence.
+            maxIts (int): maximum number of iterations that algorithm should run for.
+        Returns:
+            np.array: solution from Gauss-Seidel algorithm.
+
+        """
+
+        it = 0
+
+        x_initial = np.ones(b.shape)
+        x = x_initial
+        res = np.linalg.norm(x) / np.linalg.norm(x_initial)
+        lower_tri = np.tril(A)
+        strictly_upper_tri = np.triu(A, 1)
+        
+        while (it < maxIts) and (res > tol):
+
+            lower_tri = np.tril(A)
+            strictly_upper_tri = np.triu(A, 1)
+            x_plus1 = np.matmul(np.linalg.inv(lower_tri), (b - np.matmul(strictly_upper_tri, x)))
+            x = x_plus1
+            res = np.linalg.norm(x) / np.linalg.norm(x_initial)
+            it += 1
+        
+        print(f"Gauss-Seidel Final Iterations = {it}")
+
+        return x_plus1
+        
 
