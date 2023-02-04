@@ -1,0 +1,22 @@
+{
+    "MESH":{
+        "x0": 0.0,
+        "x1": 0.1,
+        "y0": 0.0,
+        "y1": 0.1,
+        "z0": 0.0,
+        "z1": 1.0,
+        "nxCells": 40,
+        "nyCells": 40,
+        "nzCells": 1
+    },
+    "SIMULATION":{
+        "Re": 100,
+        "alpha_u": 0.2,
+        "alpha_p": 0.8,
+        "Gauss-Seidel":{
+            "tol": 1e-6,
+            "maxIts": 1000
+        }
+    }
+}
