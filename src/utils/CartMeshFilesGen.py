@@ -1,12 +1,11 @@
 import numpy as np
+from utils.ReadJSON import ReadJSON
 
 def mesh_files(x0, x1, y0, y1, z0, z1, nxCells, nyCells, nzCells):
 
     points = get_points(x0, x1, y0, y1, z0, z1, nxCells, nyCells, nzCells)
 
     faces = get_faces(nxCells, nyCells, nzCells)
-
-
 
     write_file(points, "MeshFiles/points.txt")
     write_file(faces, "MeshFiles/faces.txt")
@@ -104,4 +103,7 @@ def write_file(points, filename):
 
 if __name__ == "__main__":
 
-    mesh_files(0, 0.1, 0, 0.1, 0, 1, 2, 2, 1)
+    mesh_settings = ReadJSON('config/config.json')['MESH']
+
+    mesh_files(mesh_settings['x0'], mesh_settings['x1'], mesh_settings['y0'], mesh_settings['y1'], mesh_settings['z0'], 
+               mesh_settings['z1'], mesh_settings['nxCells'], mesh_settings['nyCells'], mesh_settings['nzCells'])
