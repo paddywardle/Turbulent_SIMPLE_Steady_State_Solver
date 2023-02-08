@@ -19,8 +19,7 @@ def read_file(filename):
         for line in f.readlines():
             line = line.strip()
             ls = line.strip('()').replace(" ", "").split(",")
-
-            if filename != "boundary.txt":
+            if filename != "boundary_test.txt":
                 ls = [float(i) for i in ls]
             
             array.append(ls)
