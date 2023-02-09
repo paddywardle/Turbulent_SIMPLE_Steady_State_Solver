@@ -10,7 +10,7 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, uface, BCs):
+    def momentum_disc(self, u, uface):
 
         """
         This function discretises the momentum equation to get the diagonal and off-diagonal contributions to the linear system.
@@ -33,34 +33,29 @@ class LinearSystem:
 
             cell_faces = self.mesh.cells[i]
             centre_P = self.mesh.cell_centres()[i]
+            cell_owner_neighbour = self.mesh.cell_owner_neighbour()
 
-            for face in self.mesh.cells[i]:
-
-                owner_neighbour = self.mesh.cell_owner_neighbour()[face]
-                sf = face_area_vectors[face]
-                face_mag = np.linalg.norm(sf)
-
-                if owner_neighbour[1] == -1 and sf[2] == 0:
-                    if sf[0] == 0:
-                        FN = face_mag * BCs[0]
-                    elif sf[1] == 0:
-                        FN = face_mag * BCs[1]
-
-                    A[i, i] += max(FN, 0) / self.alpha_u
-                    A[i, i] += -self.viscosity * face_mag / 0.05
+            for face in cell_faces:
+                face_owner_neighbour = cell_owner_neighbour[face]
+                if face_owner_neighbour[1] == -1:
+                    sf = face_area_vectors[face]
+                    face_mag = np.linalg.norm(sf)
+                    FN = face_mag * uface[face]
+                    
+                    A[i, i] += max(FN, 0)
+                    A[i, i] += -self.viscosity * face_mag / 0.005
 
             for j in neighbours:
 
                 # get faces in neighbour cell
                 neighbour_faces = self.mesh.cells[j]
-                #xprint(neighbour_faces)
                 # get the shared faces between the two cells
                 shared_face = list(set(cell_faces).intersection(neighbour_faces))[0]
                 # get the owner of the face
-                owner_neighbour = self.mesh.cell_owner_neighbour()[shared_face]
-                #print(owner_neighbour)
+                owner_neighbour = cell_owner_neighbour[shared_face]
                 # get centre of the neighbour cell
                 centre_N = self.mesh.cell_centres()[j]
+
                 # if cell is the owner of the face
                 if owner_neighbour[0] == i:
                     sf = face_area_vectors[shared_face]
@@ -69,11 +64,11 @@ class LinearSystem:
 
                 face_mag = np.linalg.norm(sf)
 
+                # calculate face flux
                 FN = face_mag * uface[shared_face]
 
                 d = abs(centre_P - centre_N)
                 d_mag = np.linalg.norm(d)
-                # calculate face flux
 
                 # convection contributions
                 A[i, i] += max(FN, 0)
@@ -89,7 +84,7 @@ class LinearSystem:
 
         return A, b
     
-    def gauss_seidel(self, A, b, u, start_it=False, tol=1e-6, maxIts=1000):
+    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=200):
 
         """
         This function uses the Gauss-Seidel algorithm to solve the linear system.
@@ -121,8 +116,6 @@ class LinearSystem:
             x = x_plus1
             res = np.linalg.norm(b - np.matmul(A, x)) / res_initial # Udine and Jasak <- ADD REFERENCE
             it += 1
-        
-        print(f"Gauss-Seidel Final Iterations = {it}")
 
         return x_plus1
         
