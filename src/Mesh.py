@@ -272,7 +272,7 @@ class Mesh:
             # append current_neighbour to overall neighbours list corresponding to cells label
             neighbours.append(current_neighbours)
 
-        return np.asarray(neighbours)
+        return np.array(neighbours)
 
     def cell_owner_neighbour(self):
 
