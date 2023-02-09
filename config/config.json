@@ -14,9 +14,10 @@
         "Re": 100,
         "alpha_u": 0.2,
         "alpha_p": 0.8,
+        "SIMPLE_tol": 1e-6,
         "Gauss-Seidel":{
             "tol": 1e-6,
-            "maxIts": 1000
+            "maxIts": 200
         }
     }
 }
