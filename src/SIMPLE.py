@@ -32,7 +32,7 @@ class SIMPLE(LinearSystem):
         
         return uface
     
-    def face_pressure(self, delta_p):
+    def face_pressure(self, p_field):
 
         delta_p_face = np.zeros((self.mesh.num_faces(), 1))
         owner_neighbour = self.mesh.cell_owner_neighbour()
@@ -41,11 +41,11 @@ class SIMPLE(LinearSystem):
             for j in self.mesh.neighbouring_cells()[i]:
                 neighbour_faces = self.mesh.cells[j]
                 shared_face = list(set(self.mesh.cells[i]).intersection(neighbour_faces))[0]
-                delta_p_face[shared_face] = (delta_p[i] + delta_p[j])/2
+                delta_p_face[shared_face] = (p_field[j] + p_field[i])
 
         for i in range(len(owner_neighbour)):
             if owner_neighbour[i][1] == -1:
-                delta_p_face[i] = delta_p[owner_neighbour[i][0]]
+                delta_p_face[i] = p_field[owner_neighbour[i][0]] - p_field[owner_neighbour[i][0]]
         
         return delta_p_face
     
@@ -157,31 +157,35 @@ class SIMPLE(LinearSystem):
 
         Ap, bp = self.pressure_laplacian(uFpre, Ax)
         
-        delta_p = self.gauss_seidel(Ap, bp, p)
+        p_field = self.gauss_seidel(Ap, bp, p)
 
-        uFcorr = self.face_flux_correction(uFpre, Ax, delta_p)
-        vFcorr = self.face_flux_correction(vFpre, Ay, delta_p)
+        uFcorr = self.face_flux_correction(uFpre, Ax, p_field)
+        vFcorr = self.face_flux_correction(vFpre, Ay, p_field)
 
-        ucorr = self.cell_centre_correction(u, Ax, delta_p)
-        vcorr = self.cell_centre_correction(v, Ay, delta_p)
+        p_field_UR = p + self.alpha_p * (p_field - p)
+        print(p_field.shape, p.shape)
 
-        return u, v, uFcorr, vFcorr, p
+        ucorr = self.cell_centre_correction(u, Ax, p_field_UR)
+        vcorr = self.cell_centre_correction(v, Ay, p_field_UR)
+
+        res = np.linalg.norm(bx - np.matmul(Ax, ucorr))
+
+        return ucorr, vcorr, uFcorr, vFcorr, p, res
     
-    def iterate(self, u, v, tol=1e-6):
-
-        p_current = self.initial_pressure()
-
+    def iterate(self, u, v, p, tol=1e-6):
+        
         u_current = u
         v_current = v
+        p_current = p
         uface_current = self.face_flux(u_current)
         vface_current = self.face_flux(v_current)
 
         res_initial = 1
-        res = res_initial / res_initial
+        resRel = res_initial / res_initial
 
-        for i in range(5):
+        for i in range(100):
 
-            u_updated, v_updated, uface_updated, vface_updated, p_updated = self.SIMPLE_loop(u_current, v_current, uface_current, vface_current, p_current)
+            u_updated, v_updated, uface_updated, vface_updated, p_updated, res = self.SIMPLE_loop(u_current, v_current, uface_current, vface_current, p_current)
 
             u_current = u_updated
             v_current = v_updated
@@ -189,7 +193,10 @@ class SIMPLE(LinearSystem):
             vface_current = vface_updated
             p_current = p_updated
 
-        print(uface_current)
+            resRel = res / res_initial
+            break
+
+        print(u_current)
 
 
 

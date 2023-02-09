@@ -26,7 +26,7 @@ def ReadFile(filename):
 
     with open(filename) as f:
         for line in f.readlines():
-            data.append(line)
+            data.append(float(line.strip()))
     
     return np.array(data)
 

@@ -104,7 +104,7 @@ class LinearSystem:
         x_initial = np.reshape(u, b.shape)
         x = x_initial
         x_plus1 = x_initial
-        res_initial = np.linalg.norm(b - np.matmul(A, x_initial)) + 1e-4 # Udine and Jasak <- ADD REFERENCE
+        res_initial = np.linalg.norm(b - np.matmul(A, x_initial)) + 1e-6 # Udine and Jasak <- ADD REFERENCE
         res = res_initial / res_initial
 
         # while number iterations is less than 
@@ -117,6 +117,6 @@ class LinearSystem:
             res = np.linalg.norm(b - np.matmul(A, x)) / res_initial # Udine and Jasak <- ADD REFERENCE
             it += 1
 
-        return x_plus1
+        return x_plus1.flatten()
         
 
