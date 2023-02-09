@@ -18,8 +18,8 @@ def read_file(filename):
     with open("MeshFiles/" + filename, 'r') as f:
         for line in f.readlines():
             line = line.strip()
-            ls = line.strip('()').replace(" ", "").split(",")
-            if filename != "boundary_test.txt":
+            ls = line.strip('()').split()
+            if filename != "boundary_patches.txt":
                 ls = [float(i) for i in ls]
             
             array.append(ls)
