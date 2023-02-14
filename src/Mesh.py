@@ -150,14 +150,12 @@ class Mesh:
 
         # empty array for cell face area vectors
         face_area_vecs = []
+        face_centres = self.face_centres()
 
         for face in self.faces:
-            # get points that make up face
+            # get points that make up face and face centre
             face_points = self.points[face]
-
-            # sum up points and divide by number of points, to get face centre
-            points_sums = face_points.sum(axis=0)
-            face_cen = np.divide(points_sums, len(face_points))
+            face_cen = face_centres[face]
 
             face_area_vec = 0
 
