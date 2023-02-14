@@ -10,7 +10,7 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, uface):
+    def momentum_disc(self, u, uface, dim):
 
         """
         This function discretises the momentum equation to get the diagonal and off-diagonal contributions to the linear system.
@@ -26,61 +26,72 @@ class LinearSystem:
         A = np.zeros((N, N))
         b = np.zeros((N, 1))
 
-        for i in range(len(self.mesh.cells)):
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        neighbours = self.mesh.neighbouring_cells()
 
-            neighbours = self.mesh.neighbouring_cells()[i]
-            face_area_vectors = self.mesh.face_area_vectors()
+        for i in range(len(cell_owner_neighbour)):
 
-            cell_faces = self.mesh.cells[i]
-            centre_P = self.mesh.cell_centres()[i]
-            cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+            cell = cell_owner_neighbour[i][0]
+            neighbour = cell_owner_neighbour[i][1]
+            face_area_vector = face_area_vectors[i]
+            face_centre = face_centres[i]
+            cell_centre = cell_centres[cell]
+            face_mag = np.linalg.norm(face_area_vector)
 
-            for face in cell_faces:
-                face_owner_neighbour = cell_owner_neighbour[face]
-                if face_owner_neighbour[1] == -1:
-                    sf = face_area_vectors[face]
-                    face_mag = np.linalg.norm(sf)
-                    FN = face_mag * uface[face]
-                    
-                    A[i, i] += max(FN, 0)
-                    A[i, i] += -self.viscosity * face_mag / 0.005
-
-            for j in neighbours:
-
-                # get faces in neighbour cell
-                neighbour_faces = self.mesh.cells[j]
-                # get the shared faces between the two cells
-                shared_face = list(set(cell_faces).intersection(neighbour_faces))[0]
-                # get the owner of the face
-                owner_neighbour = cell_owner_neighbour[shared_face]
-                # get centre of the neighbour cell
-                centre_N = self.mesh.cell_centres()[j]
-
-                # if cell is the owner of the face
-                if owner_neighbour[0] == i:
-                    sf = face_area_vectors[shared_face]
+            if neighbour == -1:
+                if dim == "x":
+                    sf = face_area_vector[0]
                 else:
-                    sf = -face_area_vectors[shared_face]
+                    sf = face_area_vector[1]
 
-                face_mag = np.linalg.norm(sf)
-
-                # calculate face flux
-                FN = face_mag * uface[shared_face]
-
-                d = abs(centre_P - centre_N)
+                FN = sf * uface[i]
+                d = cell_centre - face_centre
                 d_mag = np.linalg.norm(d)
 
-                # convection contributions
-                A[i, i] += max(FN, 0)
-                A[i, j] += min(FN, 0)
+                A[cell, cell] += max(FN, 0)
+                A[cell, cell] += -self.viscosity * face_mag / 0.05
 
-                # diffusive contributions
-                A[i, i] += -self.viscosity * face_mag / d_mag
-                A[i, j] += self.viscosity * face_mag / d_mag
+                b[cell] += min(FN, 0)
+                b[cell] += self.viscosity * face_mag / 0.05
+                
+                continue
+
+            neighbour_centre = cell_centres[neighbour]
+
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)
+
+            if dim == "x":
+                sf_cell = face_area_vector[0]
+                sf_neighbour = -face_area_vector[0]
+            else:
+                sf_cell = face_area_vector[1]
+                sf_neighbour = -face_area_vector[1]
+
+            FN_cell = sf_cell * uface[i]
+            FN_neighbour = sf_neighbour * uface[i]
+
+            # convective diag contributions
+            A[cell, cell] += max(FN_cell, 0)
+            A[neighbour, neighbour] += max(FN_neighbour, 0)
+
+            # diffusive diag contributions
+            A[cell, cell] += -self.viscosity * face_mag / d_mag
+            A[neighbour, neighbour] += -self.viscosity * face_mag / d_mag
+
+            # convective off-diag contributions
+            A[cell, neighbour] = min(FN_cell, 0)
+            A[neighbour, cell] = min(FN_neighbour, 0)
+
+            # diffusive off-diag contributions
+            A[cell, neighbour] = self.viscosity * face_mag / d_mag
+            A[neighbour, cell] = self.viscosity * face_mag / d_mag
 
         for i in range(len(A)):
             A[i, i] /= self.alpha_u
-            b[i] = ((1-self.alpha_u)/self.alpha_u) * u[i] * A[i, i]
+            b[i] += ((1-self.alpha_u)/self.alpha_u) * u[i] * A[i, i]
 
         return A, b
     
