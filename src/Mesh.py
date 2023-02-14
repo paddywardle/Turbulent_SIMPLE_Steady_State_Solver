@@ -74,8 +74,12 @@ class Mesh:
         Returns:
             int: value representing the number of boundary patches in the mesh instance.
         """
+        num_patches = 0
 
-        return len(self.boundary_patches)
+        for i in self.boundary_patches:
+            if type(i) == str:
+                num_patches += 1
+        return num_patches
 
     def cell_volumes(self):
 
