@@ -52,10 +52,10 @@ class LinearSystem:
                 d_mag = np.linalg.norm(d)
 
                 A[cell, cell] += max(FN, 0)
-                A[cell, cell] += -self.viscosity * face_mag / 0.05
+                A[cell, cell] += -self.viscosity * face_mag / d_mag
 
                 b[cell] += min(FN, 0)
-                b[cell] += self.viscosity * face_mag / 0.05
+                b[cell] += self.viscosity * face_mag / d_mag
                 
                 continue
 
