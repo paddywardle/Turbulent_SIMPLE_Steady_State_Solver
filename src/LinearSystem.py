@@ -10,7 +10,7 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, uface, dim):
+    def momentum_disc(self, u, uface):
 
         """
         This function discretises the momentum equation to get the diagonal and off-diagonal contributions to the linear system.
@@ -42,10 +42,7 @@ class LinearSystem:
             face_mag = np.linalg.norm(face_area_vector)
 
             if neighbour == -1:
-                if dim == "x":
-                    sf = face_area_vector[0]
-                else:
-                    sf = face_area_vector[1]
+                sf = np.linalg.norm(face_area_vector)
 
                 FN = sf * uface[i]
                 d = cell_centre - face_centre
@@ -63,12 +60,8 @@ class LinearSystem:
 
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
-            if dim == "x":
-                sf_cell = face_area_vector[0]
-                sf_neighbour = -face_area_vector[0]
-            else:
-                sf_cell = face_area_vector[1]
-                sf_neighbour = -face_area_vector[1]
+            sf_cell = np.linalg.norm(face_area_vector)
+            sf_neighbour = -np.linalg.norm(face_area_vector)
 
             FN_cell = sf_cell * uface[i]
             FN_neighbour = sf_neighbour * uface[i]
@@ -82,12 +75,12 @@ class LinearSystem:
             A[neighbour, neighbour] += -self.viscosity * face_mag / d_mag
 
             # convective off-diag contributions
-            A[cell, neighbour] = min(FN_cell, 0)
-            A[neighbour, cell] = min(FN_neighbour, 0)
+            A[cell, neighbour] += min(FN_cell, 0)
+            A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive off-diag contributions
-            A[cell, neighbour] = self.viscosity * face_mag / d_mag
-            A[neighbour, cell] = self.viscosity * face_mag / d_mag
+            A[cell, neighbour] += self.viscosity * face_mag / d_mag
+            A[neighbour, cell] += self.viscosity * face_mag / d_mag
 
         for i in range(len(A)):
             A[i, i] /= self.alpha_u
@@ -95,7 +88,52 @@ class LinearSystem:
 
         return A, b
     
-    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=200):
+    def pressure_laplacian(self, Fpre, Au):
+
+        N = len(self.mesh.cells)
+        Ap = np.zeros((N, N))
+        bp = np.zeros((N, 1))
+
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        neighbours = self.mesh.neighbouring_cells()
+
+        for i in range(len(cell_owner_neighbour)):
+
+            cell = cell_owner_neighbour[i][0]
+            neighbour = cell_owner_neighbour[i][1]
+            face_area_vector = face_area_vectors[i]
+            face_centre = face_centres[i]
+            cell_centre = cell_centres[cell]
+            face_mag = np.linalg.norm(face_area_vector)
+
+            if neighbour == -1:
+
+                d = cell_centre - face_centre
+                d_mag = np.linalg.norm(d)
+
+                Ap[cell, cell] += -(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
+                bp[cell] += Fpre[i]
+                
+                continue
+
+            neighbour_centre = cell_centres[neighbour]
+
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)
+
+            # diffusive diag contributions
+            Ap[cell, cell] += -(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
+            Ap[neighbour, neighbour] += -(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
+
+            # diffusive off-diag contributions
+            Ap[cell, neighbour] += (self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
+            Ap[neighbour, cell] += (self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+
+        return Ap, bp
+    
+    def gauss_seidel(self, A, b, u, tol=1e-10, maxIts=200):
 
         """
         This function uses the Gauss-Seidel algorithm to solve the linear system.
@@ -110,24 +148,26 @@ class LinearSystem:
 
         """
 
-        it = 0
-        # set initial guess for x and initial residual value
-        x_initial = np.reshape(u, b.shape)
-        x = x_initial
-        x_plus1 = x_initial
-        res_initial = np.linalg.norm(b - np.matmul(A, x_initial)) + 1e-6 # Udine and Jasak <- ADD REFERENCE
-        res = res_initial / res_initial
+        res_initial = np.sum(b - np.matmul(A, u))
+        resRel = res_initial / res_initial
 
-        # while number iterations is less than 
-        while (it < maxIts) and (res > tol):
+        res_ls = [res_initial]
+        resRel_ls = [resRel]
 
-            lower_tri = np.tril(A)
-            strictly_upper_tri = np.triu(A, 1)
-            x_plus1 = np.matmul(np.linalg.inv(lower_tri), (b - np.matmul(strictly_upper_tri, x)))
-            x = x_plus1
-            res = np.linalg.norm(b - np.matmul(A, x)) / res_initial # Udine and Jasak <- ADD REFERENCE
-            it += 1
+        # Iterate 
+        for i in range(maxIts):
+            # forward sweep
+            for j in range(len(u)):
+                u[j] = (b[j] - np.dot(A[j, :j], u[:j]) - np.dot(A[j, j+1:], u[j+1:])) / A[j, j]
+            # backward sweep
+            for j in reversed(range(len(u))):
+                u[j] = (b[j] - np.dot(A[j, :j], u[:j]) - np.dot(A[j, j+1:], u[j+1:])) / A[j, j]
+            
+            res = np.sum(b - np.matmul(A, u))
+            resRel = res / res_initial
+            res_ls.append(res)
+            resRel_ls.append(resRel)
+            if np.linalg.norm(np.matmul(A, u)- b) < tol:
+                break
 
-        return x_plus1.flatten()
-        
-
+        return u, res_ls, resRel_ls
