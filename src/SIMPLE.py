@@ -1,5 +1,6 @@
 import numpy as np
 from LinearSystem import LinearSystem
+from utils.GS_convergence_plot import GS_convergence, velocity_field_quiver_plot, field_plot
 
 class SIMPLE(LinearSystem):
 
@@ -13,7 +14,7 @@ class SIMPLE(LinearSystem):
 
         return np.zeros((self.mesh.num_cells(), 1))
     
-    def face_flux(self, u):
+    def face_flux(self, u, BC):
 
         uface = np.zeros((self.mesh.num_faces(), 1))
 
@@ -28,7 +29,7 @@ class SIMPLE(LinearSystem):
                 top_index = self.mesh.boundary_patches[i+1]
 
         for i in top_index:
-            uface[int(i)] = 1
+            uface[int(i)] = BC
         
         return uface
     
@@ -36,16 +37,45 @@ class SIMPLE(LinearSystem):
 
         delta_p_face = np.zeros((self.mesh.num_faces(), 1))
         owner_neighbour = self.mesh.cell_owner_neighbour()
-
-        for i in range(self.mesh.num_cells()):
-            for j in self.mesh.neighbouring_cells()[i]:
-                neighbour_faces = self.mesh.cells[j]
-                shared_face = list(set(self.mesh.cells[i]).intersection(neighbour_faces))[0]
-                delta_p_face[shared_face] = (p_field[j] + p_field[i])
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
 
         for i in range(len(owner_neighbour)):
-            if owner_neighbour[i][1] == -1:
-                delta_p_face[i] = p_field[owner_neighbour[i][0]] - p_field[owner_neighbour[i][0]]
+
+            cell = owner_neighbour[i][0]
+            neighbour = owner_neighbour[i][1]
+
+            if neighbour == -1:
+                delta_p_face[i] = 0
+                continue
+            cell_centre = cell_centres[cell]
+            neighbour_centre = cell_centres[neighbour]
+            face_mag = np.linalg.norm(face_area_vectors[i])
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)       
+            delta_p_face[i] = ((p_field[neighbour] - p_field[cell]) / d_mag) * face_mag
+        
+        return delta_p_face
+
+    def cell_centred_pressure(self, p_field):
+
+        delta_p_face = np.zeros((self.mesh.num_faces(), 1))
+        owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+
+        for i in range(len(owner_neighbour)):
+
+            cell = owner_neighbour[i][0]
+            neighbour = owner_neighbour[i][1]
+
+            if neighbour == -1:
+                delta_p_face[i] = 0
+                continue
+            cell_centre = cell_centres[cell]
+            neighbour_centre = cell_centres[neighbour]
+            face_mag = np.linalg.norm(face_area_vectors[i])
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)       
+            delta_p_face[i] = ((p_field[neighbour] - p_field[cell]) / d_mag) * face_mag
         
         return delta_p_face
     
@@ -67,63 +97,8 @@ class SIMPLE(LinearSystem):
         
         return ap_face
     
-    def pressure_laplacian(self, Fpre, Au):
-        
-        N = len(self.mesh.cells)
-        Ap = np.zeros((N, N))
-        bp = np.zeros((N, 1))
-
-        for i in range(len(self.mesh.cells)):
-
-            neighbours = self.mesh.neighbouring_cells()[i]
-            face_area_vectors = self.mesh.face_area_vectors()
-            ap = Au[i, i]
-
-            cell_faces = self.mesh.cells[i]
-            centre_P = self.mesh.cell_centres()[i]
-            cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-
-            for face in cell_faces:
-                face_owner_neighbour = cell_owner_neighbour[face]
-                if face_owner_neighbour[1] == -1:
-                    sf = face_area_vectors[face]
-                    face_mag = np.linalg.norm(sf)
-                    Ap[i, i] += -self.viscosity * face_mag / (0.005 * ap)
-                    bp[i] += Fpre[i]
-
-            for j in neighbours:
-
-                # get faces in neighbour cell
-                neighbour_faces = self.mesh.cells[j]
-                # get the shared faces between the two cells
-                shared_face = list(set(cell_faces).intersection(neighbour_faces))[0]
-                # get the owner of the face
-                owner_neighbour = cell_owner_neighbour[shared_face]
-                # get centre of the neighbour cell
-                centre_N = self.mesh.cell_centres()[j]
-
-                # if cell is the owner of the face
-                if owner_neighbour[0] == i:
-                    sf = face_area_vectors[shared_face]
-                    bp[i] += Fpre[i]
-                else:
-                    sf = -face_area_vectors[shared_face]
-                    bp[i] += -Fpre[i]
-
-                face_mag = np.linalg.norm(sf)
-
-                d = abs(centre_P - centre_N)
-                d_mag = np.linalg.norm(d)
-
-                # diffusive contributions
-                Ap[i, i] += -self.viscosity * face_mag / (d_mag * ap)
-                Ap[i, j] += self.viscosity * face_mag / (d_mag * ap)
-
-        return Ap, bp
-    
     def face_flux_correction(self, Fpre, A, delta_p):
 
-        delta_p_face = self.face_pressure(delta_p)
         ap_face = self.face_ap(A)
         face_area_vectors = self.mesh.face_area_vectors()
 
@@ -131,13 +106,16 @@ class SIMPLE(LinearSystem):
 
         for i in range(self.mesh.num_faces()):
             face_mag = np.linalg.norm(face_area_vectors[i])
-            Fcorr[i] = Fpre[i] - (1/ap_face[i]) * face_mag * delta_p_face[i]
+            Fcorr[i] = Fpre[i] - (1/ap_face[i]) * face_mag * delta_p[i]
 
         return Fcorr
     
-    def cell_centre_correction(self, u, A, delta_p):
+    def cell_centre_correction(self, u, A, p_field_UR):
+
+        delta_p = self.face_pressure(p_field_UR)
 
         ucorr = np.zeros((self.mesh.num_cells(), 1))
+        vcorr = np.zeros((self.mesh.num_cells(), 1))
 
         for i in range(self.mesh.num_cells()):
             ucorr[i] = u[i] - delta_p[i]/A[i, i]
@@ -148,23 +126,39 @@ class SIMPLE(LinearSystem):
 
         Ax, bx = self.momentum_disc(u, uface)
         Ay, by = self.momentum_disc(v, vface)
+        # print("Ax")
+        # print(Ax)
+        # print("bx")
+        # print(bx)
+        # print("Ay")
+        # print(Ay)
+        # print("by")
+        # print(by)
 
-        uplus1 = self.gauss_seidel(Ax, bx, u)
-        vplus1 = self.gauss_seidel(Ay, by, v)
+        uplus1, res, resRel = self.gauss_seidel(Ax, bx, u)
+        #GS_convergence(resRel, list(range(len(res))))
+        vplus1, res, resRel = self.gauss_seidel(Ay, by, v)
 
-        uFpre = self.face_flux(uplus1)
-        vFpre = self.face_flux(vplus1)
+        uFpre = self.face_flux(uplus1, 1)
+        vFpre = self.face_flux(vplus1, 0)
 
         Ap, bp = self.pressure_laplacian(uFpre, Ax)
-        
-        p_field = self.gauss_seidel(Ap, bp, p)
 
-        uFcorr = self.face_flux_correction(uFpre, Ax, p_field)
-        vFcorr = self.face_flux_correction(vFpre, Ay, p_field)
+        # print("pressure A")
+        # print(Ap)
+        # print("pressure b")
+        # print(bp)
+        
+        p_field, res, resRel = self.gauss_seidel(Ap, bp, p)
+        #GS_convergence(resRel, list(range(len(resRel))))
+        delta_p = self.face_pressure(p_field)
+
+        uFcorr = self.face_flux_correction(uFpre, Ax, delta_p)
+        vFcorr = self.face_flux_correction(vFpre, Ay, delta_p)
 
         p_field_UR = p + self.alpha_p * (p_field - p)
-        print(p_field.shape, p.shape)
 
+        # # # am I using the correct bits here? <- should be delta_p?
         ucorr = self.cell_centre_correction(u, Ax, p_field_UR)
         vcorr = self.cell_centre_correction(v, Ay, p_field_UR)
 
@@ -177,14 +171,14 @@ class SIMPLE(LinearSystem):
         u_current = u
         v_current = v
         p_current = p
-        uface_current = self.face_flux(u_current)
-        vface_current = self.face_flux(v_current)
+        uface_current = self.face_flux(u_current, 1)
+        vface_current = self.face_flux(v_current, 0)
 
         res_initial = 1
         resRel = res_initial / res_initial
 
-        for i in range(100):
-
+        # change to while loop for convergence
+        for i in range(5):
             u_updated, v_updated, uface_updated, vface_updated, p_updated, res = self.SIMPLE_loop(u_current, v_current, uface_current, vface_current, p_current)
 
             u_current = u_updated
@@ -195,8 +189,13 @@ class SIMPLE(LinearSystem):
 
             resRel = res / res_initial
             break
-
+        print("ux")
         print(u_current)
+        print("pressure field")
+        print(p_updated)
 
+        # velocity_field_quiver_plot(u_current, v_current, 2, 0.1)
 
+        # field_plot(p_current, 2)
 
+        # print(u_current)
