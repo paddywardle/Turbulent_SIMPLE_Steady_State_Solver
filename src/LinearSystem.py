@@ -30,9 +30,11 @@ class LinearSystem:
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
-        neighbours = self.mesh.neighbouring_cells()
 
         for i in range(len(cell_owner_neighbour)):
+
+            if face_area_vectors[i][2] != 0:
+                continue
 
             cell = cell_owner_neighbour[i][0]
             neighbour = cell_owner_neighbour[i][1]
@@ -42,11 +44,10 @@ class LinearSystem:
             face_mag = np.linalg.norm(face_area_vector)
 
             if neighbour == -1:
-                sf = np.linalg.norm(face_area_vector)
+                sf = -np.linalg.norm(face_area_vector)
 
                 FN = sf * uface[i]
-                d = cell_centre - face_centre
-                d_mag = np.linalg.norm(d)
+                d_mag = np.linalg.norm(cell_centre - face_centre)
 
                 A[cell, cell] += max(FN, 0)
                 A[cell, cell] += -self.viscosity * face_mag / d_mag
@@ -111,8 +112,7 @@ class LinearSystem:
 
             if neighbour == -1:
 
-                d = cell_centre - face_centre
-                d_mag = np.linalg.norm(d)
+                d_mag = np.linalg.norm(cell_centre - face_centre)
 
                 Ap[cell, cell] += -(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
                 bp[cell] += Fpre[i]
