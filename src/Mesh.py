@@ -92,16 +92,18 @@ class Mesh:
         # should I calculate cell and face centre lists using other functions and then use these values in the loop rather than calculating each time?
         # empty array for cell volumes to be added to
         cell_vols = np.array([])
+        face_centres = self.face_centres()
+        cell_centres = self.cell_centres()
 
         for cell in self.cells:
             # get unique faces that make up the cell
             cell_points_num = np.unique(np.concatenate(self.faces[cell]))
             cell_points = self.points[cell_points_num]
-            cell_centre = np.divide(cell_points.sum(axis=0), len(cell_points))
+            cell_centre = cell_centres[cell]
             cell_vol = 0
             for face in cell:
                 # get points that make up the face
-                face_points = self.points[self.faces[face]]
+                face_points = face_centres[face]
                 # get face centre
                 face_centre = np.divide(face_points.sum(axis=0), len(face_points))
                 for i in range(len(face_points)):
@@ -152,10 +154,10 @@ class Mesh:
         face_area_vecs = []
         face_centres = self.face_centres()
 
-        for face in self.faces:
+        for i in range(len(self.faces)):
             # get points that make up face and face centre
-            face_points = self.points[face]
-            face_cen = face_centres[face]
+            face_points = self.points[self.faces[i]]
+            face_cen = face_centres[i]
 
             face_area_vec = 0
 
@@ -259,7 +261,6 @@ class Mesh:
         """
 
         neighbours = []
-
 
         for i in range(len(self.cells)):
             current_neighbours = []
