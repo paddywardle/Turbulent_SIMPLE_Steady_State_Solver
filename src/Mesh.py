@@ -162,7 +162,7 @@ class Mesh:
             cell_vols = np.append(cell_vols, cell_vol)
         
         return cell_vols
-
+    
     def face_area_vectors(self):
 
         """
@@ -175,14 +175,13 @@ class Mesh:
         # empty array for cell face area vectors
         face_area_vecs = []
         face_centres = self.face_centres()
-
-        for i in range(len(self.faces)):
+        owner_neighbours = self.cell_owner_neighbour()
+        
+        for i in range(len(owner_neighbours)):
             # get points that make up face and face centre
             face_points = self.points[self.faces[i]]
             face_cen = face_centres[i]
-
             face_area_vec = 0
-
             for i in range(len(face_points)):
                 # looping to beginning if at the end of the list
                 if i == (len(face_points)-1):
