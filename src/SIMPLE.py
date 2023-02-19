@@ -189,6 +189,7 @@ class SIMPLE(LinearSystem):
         vFcorr = self.face_flux_correction(vFpre, Ay, delta_p)
 
         total_flux = self.face_flux_check(uFcorr, vFcorr)
+        print(total_flux)
 
         p_field_UR = p + self.alpha_p * (p_field - p)
 
@@ -227,14 +228,3 @@ class SIMPLE(LinearSystem):
             break
             if res < tol:
                 print(f"Simulation converged in {it} iterations")
-
-        # convergence(res_ls)
-
-        # print("ux")
-        #print(uface)
-        # print("uy")
-        # print(v)
-        # print("pressure field")
-        # print(p)
-        print(u)
-        print(v)
