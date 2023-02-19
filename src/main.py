@@ -9,10 +9,10 @@ from SIMPLE import SIMPLE
 if __name__ == "__main__":
 
     # Read settings
-    Re, alpha_u, alpha_p, SIMPLE_tol, GS_tol, maxIts = simulation_sets = ReadSettings('config/config.json')
+    Re, alpha_u, alpha_p, SIMPLE_tol, GS_tol, maxIts, L = simulation_sets = ReadSettings('config/config.json')
 
     # calculate kinematic viscosity
-    viscosity = 1/Re
+    viscosity = L/Re
 
     # read in mesh and initialise mesh class using data
     points, faces, cells, boundary = read_mesh("points_test.txt", "faces_test.txt", "cells_test.txt", "boundary_patches.txt")
