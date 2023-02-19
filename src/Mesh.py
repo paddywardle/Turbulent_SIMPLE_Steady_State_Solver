@@ -80,7 +80,29 @@ class Mesh:
             if type(i) == str:
                 num_patches += 1
         return num_patches
+    
+    def tetrahedron_volume(self, face_point1, face_point2, face_centre, cell_centre):
 
+        """
+        This function returns the volume of a tetrahedron uses the coordinate matrix calculation.
+
+        Args:
+            face_point1 (float): point in current face
+            face_point2 (float): point in current face
+            face_centre (float): centre of current face
+            cell_centre (float): centre of cell
+
+        Returns:
+            np.array: array containing the volume of each cell in the mesh
+        """
+
+        # array of current tetrahedron vertices
+        cell_vertices = np.concatenate(([face_point1], [face_point2], [face_centre], [cell_centre]), axis=0)
+        # adding ones to vertices to get coordinate matrix (square matrix)
+        coord_matrix = np.column_stack((cell_vertices, np.ones((len(cell_vertices), 1))))
+        # volume of tetrahedron is the determinant of coordinate matrix divided by 6, adding it to current volume
+        return abs(np.linalg.det(coord_matrix) / 6)
+    
     def cell_volumes(self):
 
         """
@@ -91,39 +113,39 @@ class Mesh:
         """
         # should I calculate cell and face centre lists using other functions and then use these values in the loop rather than calculating each time?
         # empty array for cell volumes to be added to
-        cell_vols = np.array([])
+        cell_vols = np.zeros((self.num_cells(),))
         face_centres = self.face_centres()
         cell_centres = self.cell_centres()
+        owner_neighbours = self.cell_owner_neighbour()
 
-        for cell in self.cells:
-            # get unique faces that make up the cell
-            cell_points_num = np.unique(np.concatenate(self.faces[cell]))
-            cell_points = self.points[cell_points_num]
+        for i in range(len(owner_neighbours)):
+
+            cell = owner_neighbours[i][0]
+            neighbour = owner_neighbours[i][1]
+            face_points = self.points[self.faces[i]]
             cell_centre = cell_centres[cell]
-            cell_vol = 0
-            for face in cell:
-                # get points that make up the face
-                face_points = face_centres[face]
-                # get face centre
-                face_centre = np.divide(face_points.sum(axis=0), len(face_points))
-                for i in range(len(face_points)):
-                    # looping to beginning of list if current iteration is at the end of the list
-                    if i == (len(face_points)-1):
-                        # array of current tetrahedron vertices
-                        vertices = np.concatenate(([face_points[i]], [face_points[0]], [face_centre], [cell_centre]), axis=0)
-                        # adding ones to vertices to get coordinate matrix (square matrix)
-                        coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
-                        # volume of tetrahedron is the determinant of coordinate matrix divided by 6, adding it to current volume
-                        cell_vol += abs(np.linalg.det(coord_matrix) / 6)
+            neighbour_centre = cell_centres[neighbour]
+            face_centre = face_centres[i]
+
+            for j in range(len(face_points)):
+                # address boundary faces
+                if j == (len(face_points)-1):
+                    # get tetrahedron volume
+                    cell_vols[cell] += self.tetrahedron_volume(face_points[j], face_points[0], face_centre, cell_centre)
+                    # dont work out neighbour volume if boundary
+                    if neighbour == -1:
                         continue
-                    # array of current tetrahedron vertices
-                    vertices = np.concatenate(([face_points[i]], [face_points[i+1]], [face_centre], [cell_centre]), axis=0)
-                    # adding ones to vertices to get coordinate matrix (square matrix)
-                    coord_matrix = np.column_stack((vertices, np.ones((len(vertices), 1))))
-                    # volume of tetrahedron is the determinant of coordinate matrix divided by 6, adding it to volume of current cell
-                    cell_vol += abs(np.linalg.det(coord_matrix) / 6)
-            
-            cell_vols = np.append(cell_vols, cell_vol)
+                    # get tetrahedron volume
+                    cell_vols[neighbour] += self.tetrahedron_volume(face_points[j], face_points[0], face_centre, neighbour_centre)
+                    continue
+                
+                # get tetrahedron volume
+                cell_vols[cell] += self.tetrahedron_volume(face_points[j], face_points[j+1], face_centre, cell_centre)
+                # dont work out neighbour volume if boundary
+                if neighbour == -1:
+                    continue
+                # get tetrahedron volume
+                cell_vols[neighbour] += self.tetrahedron_volume(face_points[j], face_points[j+1], face_centre, neighbour_centre)
         
         return cell_vols
 
