@@ -18,6 +18,11 @@ if __name__ == "__main__":
     points, faces, cells, boundary = read_mesh("points_test.txt", "faces_test.txt", "cells_test.txt", "boundary_patches.txt")
 
     mesh = Mesh(points, faces, cells, boundary)
+    # print(mesh.face_area_vectors2())
+    # print("gap")
+    # print(mesh.face_area_vectors())
+    # print("gap")
+    # print(mesh.cell_owner_neighbour())
 
     # set initial conditions for the simulation (Ux, Uy, and P) <- assuming fluid is at rest at the start of the simulation
     u_field = ReadFile("InitialConds/u_field.txt")

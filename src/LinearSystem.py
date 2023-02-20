@@ -17,6 +17,7 @@ class LinearSystem:
 
         Args:
             u (np.array): current velocity field of the system
+            uface (np.array): current face velocities
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
@@ -44,7 +45,7 @@ class LinearSystem:
             face_mag = np.linalg.norm(face_area_vector)
 
             if neighbour == -1:
-                sf = -np.linalg.norm(face_area_vector)
+                sf = np.linalg.norm(face_area_vector)
 
                 FN = sf * uface[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
@@ -54,7 +55,6 @@ class LinearSystem:
 
                 b[cell] += min(FN, 0)
                 b[cell] += self.viscosity * face_mag / d_mag
-                
                 continue
 
             neighbour_centre = cell_centres[neighbour]

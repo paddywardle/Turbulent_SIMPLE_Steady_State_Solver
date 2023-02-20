@@ -1,6 +1,6 @@
 import numpy as np
 from LinearSystem import LinearSystem
-from utils.plot_script import convergence, velocity_field_quiver_plot, field_plot
+#from plots.plot_script import convergence, velocity_field_quiver_plot, field_plot
 
 class SIMPLE(LinearSystem):
 
@@ -9,10 +9,6 @@ class SIMPLE(LinearSystem):
         LinearSystem.__init__(self, mesh, viscosity, alpha_u)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
-
-    def initial_pressure(self):
-
-        return np.zeros((self.mesh.num_cells(), 1))
     
     def face_flux(self, u, BC):
 
@@ -163,19 +159,14 @@ class SIMPLE(LinearSystem):
 
         return total_flux
         
-    def SIMPLE_loop(self, u, v, uface, vface, p):
+    def SIMPLE_loop(self, u, v, uface, vface, p, it):
 
         Ax, bx = self.momentum_disc(u, uface)
         Ay, by = self.momentum_disc(v, vface)
 
-        # print(Ax)
-        # print(bx)
-        # print(Ay)
-        # print(by)
-
         uplus1, res, resRel = self.gauss_seidel(Ax, bx, u)
         vplus1, res, resRel = self.gauss_seidel(Ay, by, v)
-
+        
         uFpre = self.face_flux(uplus1, 1)
         vFpre = self.face_flux(vplus1, 0)
 
@@ -189,7 +180,6 @@ class SIMPLE(LinearSystem):
         vFcorr = self.face_flux_correction(vFpre, Ay, delta_p)
 
         total_flux = self.face_flux_check(uFcorr, vFcorr)
-        print(total_flux)
 
         p_field_UR = p + self.alpha_p * (p_field - p)
 
@@ -211,7 +201,6 @@ class SIMPLE(LinearSystem):
         
         uface = self.face_flux(u, 1)
         vface = self.face_flux(v, 0)
-        print(uface)
 
         res_initial, resRel = self.initial_residual(u, uface)
         res_ls = [res_initial]
@@ -220,7 +209,7 @@ class SIMPLE(LinearSystem):
         it = 0
 
         for i in range(maxIts):
-            u, v, uface, vface, p, res = self.SIMPLE_loop(u, v, uface, vface, p)
+            u, v, uface, vface, p, res = self.SIMPLE_loop(u, v, uface, vface, p, it)
             it += 1
             resRel = res / res_initial
             res_ls.append(res)
