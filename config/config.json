@@ -5,15 +5,15 @@
         "y0": 0.0,
         "y1": 0.1,
         "z0": 0.0,
-        "z1": 1.0,
+        "z1": 0.01,
         "nxCells": 40,
         "nyCells": 40,
         "nzCells": 1
     },
     "SIMULATION":{
         "Re": 100,
-        "alpha_u": 0.2,
-        "alpha_p": 0.8,
+        "alpha_u": 0.95,
+        "alpha_p": 0.2,
         "SIMPLE_tol": 1e-6,
         "Gauss-Seidel":{
             "tol": 1e-6,

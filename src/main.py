@@ -13,6 +13,7 @@ if __name__ == "__main__":
 
     # calculate kinematic viscosity
     viscosity = L/Re
+    print(viscosity)
 
     # read in mesh and initialise mesh class using data
     points, faces, cells, boundary = read_mesh("points_test.txt", "faces_test.txt", "cells_test.txt", "boundary_patches.txt")

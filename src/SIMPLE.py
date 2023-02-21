@@ -10,7 +10,7 @@ class SIMPLE(LinearSystem):
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
-    def face_flux(self, u, BC):
+    def face_velocity(self, u, BC):
 
         uface = np.zeros((self.mesh.num_faces(), 1))
 
@@ -40,6 +40,21 @@ class SIMPLE(LinearSystem):
                 uface[i] = u[cell] + (PF_mag * u[neighbour]) / PN_mag
 
         return uface
+    
+    def face_flux(self, uface, vface, zface):
+
+        F = []
+        face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
+        
+        face_velocity = np.squeeze(np.hstack((uface, vface, zface)))
+
+        for i in range(len(face_velocity)):
+            F_current = np.dot(face_area_vectors[i], face_velocity[i])
+            F.append(F_current)
+
+        F = np.asarray(F)
+
+        return F
     
     def face_pressure(self, p_field):
 
@@ -143,77 +158,103 @@ class SIMPLE(LinearSystem):
 
         return ucorr, vcorr
     
-    def face_flux_check(self, uface, vface):
+    def face_flux_check(self, F):
 
         owner_neighbour = self.mesh.cell_owner_neighbour()
         total_flux = np.zeros((self.mesh.num_cells(), 1))
 
-        for i in range(self.mesh.num_cells()):
+        for i in range(len(owner_neighbour)):
+            cell = owner_neighbour[i][0]
+            neighbour = owner_neighbour[i][1]
 
-            cell_faces = self.mesh.cells[i]
-            for face in cell_faces:
-                if owner_neighbour[face][0] == i:
-                    total_flux[i] += uface[face] + vface[face]
-                else:
-                    total_flux[i] += -uface[face] - vface[face]
+            total_flux[cell] += F[i]
+            total_flux[neighbour] -= F[i]
 
         return total_flux
         
-    def SIMPLE_loop(self, u, v, uface, vface, p, it):
+    def SIMPLE_loop(self, u, v, F, p, it):
 
-        Ax, bx = self.momentum_disc(u, uface)
-        Ay, by = self.momentum_disc(v, vface)
+        uface = self.face_velocity(u, 1)
+        vface = self.face_velocity(v, 0)
+        zface = np.zeros_like(vface)
+        Ax, bx = self.momentum_disc(u, F, 1)
+        Ay, by = self.momentum_disc(v, F, 0)
+        print(Ax)
+        print(bx)
 
         uplus1, res, resRel = self.gauss_seidel(Ax, bx, u)
         vplus1, res, resRel = self.gauss_seidel(Ay, by, v)
+        print(uplus1)
+        print(vplus1)
         
-        uFpre = self.face_flux(uplus1, 1)
-        vFpre = self.face_flux(vplus1, 0)
+        if it == 0:
+            uface_plus1 = self.face_velocity(uplus1, 1)
+            vface_plus1 = self.face_velocity(vplus1, 0)
+            Fpre = self.face_flux(uface_plus1, vface_plus1, zface)
+        else:
+            Fpre = F
 
-        Ap, bp = self.pressure_laplacian(uFpre, Ax)
-        
+        Ap, bp = self.pressure_laplacian(Fpre, Ax)
+
         p_field, res, resRel = self.gauss_seidel(Ap, bp, p)
 
         delta_p = self.face_pressure(p_field)
 
-        uFcorr = self.face_flux_correction(uFpre, Ax, delta_p)
-        vFcorr = self.face_flux_correction(vFpre, Ay, delta_p)
+        Fcorr = self.face_flux_correction(Fpre, Ax, delta_p)
 
-        total_flux = self.face_flux_check(uFcorr, vFcorr)
+        total_flux = self.face_flux_check(Fcorr)
+        # print(total_flux)
 
         p_field_UR = p + self.alpha_p * (p_field - p)
 
         ucorr, vcorr = self.cell_centre_correction(Ax, Ay, u, v, p_field_UR)
 
+        # print(ucorr)
+
         res = np.linalg.norm(bx - np.matmul(Ax, ucorr))
 
-        return ucorr, vcorr, uFcorr, vFcorr, p, res
+        return ucorr, vcorr, Fcorr, p, res
     
-    def initial_residual(self, u, uface):
+    def initial_residual(self, u, F):
 
-        A, b = self.momentum_disc(u, uface)
+        A, b = self.momentum_disc(u, F, 0)
         res_initial = np.sum(b - np.matmul(A, u))
-        resRel = res_initial / res_initial
+        if res_initial == 0:
+            resRel = 0
+        else:
+            resRel = res_initial / res_initial
 
         return res_initial, resRel
 
     def iterate(self, u, v, p, tol=1e-10, maxIts=10):
         
-        uface = self.face_flux(u, 1)
-        vface = self.face_flux(v, 0)
+        uface = self.face_velocity(u, 1)
+        vface = self.face_velocity(v, 0)
+        zface = vface
+        F = self.face_flux(uface, vface, zface)
 
-        res_initial, resRel = self.initial_residual(u, uface)
+        res_initial, resRel = self.initial_residual(u, F)
         res_ls = [res_initial]
         resRel_ls = [resRel]
 
         it = 0
 
         for i in range(maxIts):
-            u, v, uface, vface, p, res = self.SIMPLE_loop(u, v, uface, vface, p, it)
+            u, v, F, p, res = self.SIMPLE_loop(u, v, F, p, it)
             it += 1
-            resRel = res / res_initial
+            if res_initial == 0:
+                resRel = 0
+            else:
+                resRel = res / res_initial
             res_ls.append(res)
             resRel_ls.append(resRel)
             break
             if res < tol:
                 print(f"Simulation converged in {it} iterations")
+                break
+
+        # print(u)
+        # print(v)
+        # print(p)
+        # print(F)
+
