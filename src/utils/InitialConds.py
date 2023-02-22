@@ -28,7 +28,7 @@ def ReadFile(filename):
         for line in f.readlines():
             data.append(float(line.strip()))
     
-    return np.array(data)
+    return np.array(data, dtype=float)
 
 if __name__ == "__main__":
 
