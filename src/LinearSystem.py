@@ -35,7 +35,7 @@ class LinearSystem:
         N = len(self.mesh.cells)
 
         A = np.zeros((N, N))
-        b = np.zeros((N, 1))
+        b = np.zeros((N, 1)).flatten()
 
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
@@ -112,14 +112,12 @@ class LinearSystem:
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
 
         for i in range(len(cell_owner_neighbour)):
 
             cell = cell_owner_neighbour[i][0]
             neighbour = cell_owner_neighbour[i][1]
             face_area_vector = face_area_vectors[i]
-            face_centre = face_centres[i]
             cell_centre = cell_centres[cell]
             face_mag = np.linalg.norm(face_area_vector)
 
@@ -133,16 +131,16 @@ class LinearSystem:
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
             # diffusive diag contributions
-            Ap[cell, cell] += -(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
-            Ap[neighbour, neighbour] += -(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
+            Ap[cell, cell] += (self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
+            Ap[neighbour, neighbour] += (self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += (self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
-            Ap[neighbour, cell] += (self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+            Ap[cell, neighbour] += -(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
+            Ap[neighbour, cell] += -(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
 
         return Ap, bp
     
-    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=200):
+    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=1000):
 
         """
         This function uses the Gauss-Seidel algorithm to solve the linear system.
@@ -157,37 +155,31 @@ class LinearSystem:
 
         """
 
-        res_initial = np.sum(b - np.matmul(A, u))
+        for k in range(maxIts):
+            for i in range(len(A)):
+                u_new = b[i]
+                for j in range(len(A)):
+                    if (j != i):
+                        u_new -= A[i][j] * u[j]
+                u[i] = u_new / A[i][i]
 
-        if res_initial == 0:
-            resRel = 0
-        else:
-            resRel = res_initial / res_initial
+        return u, 1
+    
+# if __name__ == "__main__":
+#     ls = LinearSystem(1, 1, 1)
 
-        res_ls = [res_initial]
-        resRel_ls = [resRel]
+#     # x = np.array([0, 0, 0], dtype=float)                        
+#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]], dtype=float)
+#     # b = np.array([4,7,3], dtype=float)
+#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]])
+#     # b = np.array([4,7,3])
+#     # u = np.array([0, 0, 0])
+#     # print(ls.gauss_seidel(A, b, u))
+#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]])
+#     # b = np.array([4,7,3])
+#     # u = np.array([0, 0, 0])
+#     # print(np.linalg.solve(A, b))
 
-        cell0 = []
-
-        # Iterate 
-        for i in range(maxIts):
-            # forward sweep
-            for j in range(len(u)):
-                u[j] = (b[j] - np.dot(A[j,:], u)) / A[j, j] 
-            # backward sweep
-            # for j in reversed(range(len(u))):
-            #     u[j] = (b[j] - np.dot(A[j,:], u)) / A[j, j] 
-            res = np.sum(b - np.matmul(A, u))
-            cell0.append(u[0])
-            if res_initial == 0:
-                resRel = 0
-            else:
-                resRel = res / res_initial
-            res_ls.append(res)
-            resRel_ls.append(resRel)
-            if np.linalg.norm(np.matmul(A, u)- b) < tol:
-                break
-
-        print(cell0)
-        
-        return u, res_ls, resRel_ls
+#     b = np.array([[0.e+00],[0.e+00],[2.e-05],[2.e-05]], dtype=float)
+#     A = np.array([[ 6.31578947e-05, -1.00000000e-05, -1.00000000e-05,  0.00000000e+00], [-1.00000000e-05,  6.31578947e-05 , 0.00000000e+00 ,-1.00000000e-05], [-1.00000000e-05 , 0.00000000e+00  ,6.31578947e-05, -1.00000000e-05],[ 0.00000000e+00 ,-1.00000000e-05 ,-1.00000000e-05 , 6.31578947e-05]], dtype=float)
+#     print(np.linalg.solve(A, b))
