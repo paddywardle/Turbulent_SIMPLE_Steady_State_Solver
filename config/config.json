@@ -12,9 +12,12 @@
     },
     "SIMULATION":{
         "Re": 100,
-        "alpha_u": 0.95,
+        "alpha_u": 0.8,
         "alpha_p": 0.2,
-        "SIMPLE_tol": 1e-6,
+        "SIMPLE":{
+            "tol": 1e-10,
+            "its": 25 
+        },
         "Gauss-Seidel":{
             "tol": 1e-6,
             "maxIts": 200

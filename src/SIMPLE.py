@@ -1,6 +1,5 @@
 import numpy as np
 from LinearSystem import LinearSystem
-#from plots.plot_script import convergence, velocity_field_quiver_plot, field_plot
 
 class SIMPLE(LinearSystem):
 
@@ -37,7 +36,7 @@ class SIMPLE(LinearSystem):
             else:
                 PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
                 PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-                uface[i] = u[cell] + (PF_mag * u[neighbour]) / PN_mag
+                uface[i] = u[cell] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
 
         return uface
     
@@ -74,89 +73,101 @@ class SIMPLE(LinearSystem):
             cell_centre = cell_centres[cell]
             neighbour_centre = cell_centres[neighbour]
             face_mag = np.linalg.norm(face_area_vectors[i])
-            d_mag = np.linalg.norm(cell_centre - neighbour_centre)       
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)
             delta_p_face[i] = ((p_field[neighbour] - p_field[cell]) / d_mag) * face_mag
         
         return delta_p_face
-
-    def cell_centred_pressure(self, p_field):
-
-        delta_px = np.zeros((self.mesh.num_cells(), 1))
-        delta_py = np.zeros((self.mesh.num_cells(), 1))
-        owner_neighbours = self.mesh.cell_owner_neighbour()
-        face_area_vectors = self.mesh.face_area_vectors()
-
-        for i in range(self.mesh.num_cells()):
-
-            faces = self.mesh.cells[i]
-            faces_x = []
-            faces_y = []
-
-            for face in faces:
-                if face_area_vectors[face][0] != 0:
-                    faces_x.append(face)
-                elif face_area_vectors[face][1] != 0:
-                    faces_y.append(face)
-            
-            owner_neighbour_x = owner_neighbours[faces_x].flatten()
-            owner_neighbour_x = owner_neighbour_x[owner_neighbour_x != i]
-            owner_neighbour_y = owner_neighbours[faces_y].flatten()
-            owner_neighbour_y = owner_neighbour_y[owner_neighbour_y != i]
-
-            if -1 in owner_neighbour_x:
-                delta_px[i] = p_field[owner_neighbour_x[owner_neighbour_x != -1]] - p_field[i]
-            else:
-                delta_px[i] = p_field[owner_neighbour_x[0]] - p_field[owner_neighbour_x[1]]
-            if -1 in owner_neighbour_y:
-                delta_py[i] = p_field[owner_neighbour_y[owner_neighbour_y != -1]] - p_field[i]
-            else:
-                delta_py[i] = p_field[owner_neighbour_y[0]] - p_field[owner_neighbour_y[1]]
-        
-        return delta_px, delta_py
     
     def face_ap(self, A):
 
         ap_face = np.zeros((self.mesh.num_faces(), 1))
         owner_neighbour = self.mesh.cell_owner_neighbour()
-
-        for i in range(self.mesh.num_cells()):
-            for j in self.mesh.neighbouring_cells()[i]:
-                neighbour_faces = self.mesh.cells[j]
-                shared_face = list(set(self.mesh.cells[i]).intersection(neighbour_faces))[0]
-                ap_face[shared_face] = (A[i, i] + A[j, j])/2
+        face_centres = self.mesh.face_centres()
+        cell_centres = self.mesh.cell_centres()
 
         for i in range(len(owner_neighbour)):
-            if owner_neighbour[i][1] == -1:
-                diag_ind = owner_neighbour[i][0]
-                ap_face[i] = A[diag_ind, diag_ind] 
+            cell = owner_neighbour[i][0]
+            neighbour = owner_neighbour[i][1]
+
+            if neighbour == -1:
+                ap_face[i] = A[cell, cell]
+            else:
+                PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
+                PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
+                ap_face[i] = A[cell, cell] + (PF_mag * (A[neighbour, neighbour]-A[cell, cell])) / PN_mag
         
         return ap_face
     
-    def face_flux_correction(self, Fpre, A, delta_p):
+    def face_flux_correction(self, F, A, p_field):
 
-        ap_face = self.face_ap(A)
+        owner_neighbours = self.mesh.cell_owner_neighbour()
+        face_centres = self.mesh.face_centres()
+        cell_centres = self.mesh.cell_centres()
         face_area_vectors = self.mesh.face_area_vectors()
+        ap_face = self.face_ap(A)
 
-        Fcorr = np.zeros((self.mesh.num_faces(), 1))
+        for i in range(len(owner_neighbours)):
+            cell = owner_neighbours[i][0]
+            neighbour = owner_neighbours[i][1]
+            face_area_vector = face_area_vectors[i]
+            face_mag = np.linalg.norm(face_area_vector)
+            ap = A[cell,cell]#ap_face[i]
 
-        for i in range(self.mesh.num_faces()):
-            face_mag = np.linalg.norm(face_area_vectors[i])
-            Fcorr[i] = Fpre[i] - (1/ap_face[i]) * face_mag * delta_p[i]
+            if neighbour == -1:
+                d_mag = np.linalg.norm(cell_centres[cell] - face_centres[i])
+                aPN = ap * face_mag / d_mag
+                # zero gradient boundary condition
+                F[i] -= aPN * 0
+                continue
+            
+            d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
+            aPN = ap * face_mag / d_mag
 
-        return Fcorr
+            F[i] -= aPN * (p_field[neighbour] - p_field[cell])
+
+        return F
+
+    # def pressure(self, p_field):
+
+    #     face_area_vectors = self.mesh.face_area_vectors()
+    #     owner_neighbours = self.mesh.cell_owner_neighbour()
+
+    #     delta_px = np.zeros_like(p_field, dtype=float)
+    #     delta_py = np.zeros_like(p_field, dtype=float)
+
+    #     for i in range(len(owner_neighbours)):
+
+    #         cell = owner_neighbours[i][0]
+    #         neighbour = owner_neighbours[i][1]
+    #         face_area_vector = face_area_vectors[i]
+
+    #         for j in range(len(face_area_vector)):
+                
+
+
     
-    def cell_centre_correction(self, Ax, Ay, u, v, p_field_UR):
+    def cell_centre_correction(self, Ax, Ay, u, v, p_field):
 
-        delta_px, delta_py = self.cell_centred_pressure(p_field_UR)
+        owner_neighbours = self.mesh.cell_owner_neighbour()
+        cell_centres = self.mesh.cell_centres()
 
-        ucorr = np.zeros((self.mesh.num_cells(), 1))
-        vcorr = np.zeros((self.mesh.num_cells(), 1))
+        for i in range(len(owner_neighbours)):
 
-        for i in range(self.mesh.num_cells()):
-            ucorr[i] = u[i] - delta_px[i]/Ax[i, i]
-            vcorr[i] = v[i] - delta_py[i]/Ay[i, i]
+            cell = owner_neighbours[i][0]
+            neighbour = owner_neighbours[i][1]
 
-        return ucorr, vcorr
+            if neighbour == -1:
+                # neumann 0 grad boundary conditions so skip
+                continue
+            else:
+                d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
+
+                u[cell] -= ((p_field[neighbour]-p_field[cell]) / d_mag) / Ax[cell, cell]
+                # u[neighbour] -= (p_field[cell]-p_field[neighbour]) / Ax[cell, cell]
+                v[cell] -= ((p_field[neighbour]-p_field[cell]) / d_mag) / Ay[cell, cell]
+                # v[neighbour] -= (p_field[cell]-p_field[neighbour]) / Ay[cell, cell]
+
+        return u, v
     
     def face_flux_check(self, F):
 
@@ -171,49 +182,14 @@ class SIMPLE(LinearSystem):
             total_flux[neighbour] -= F[i]
 
         return total_flux
-        
-    def SIMPLE_loop(self, u, v, F, p, it):
+    
+    def residual(self, Ax, bx, Ay, by, u, v):
 
-        uface = self.face_velocity(u, 1)
-        vface = self.face_velocity(v, 0)
-        zface = np.zeros_like(vface)
-        Ax, bx = self.momentum_disc(u, F, 1)
-        Ay, by = self.momentum_disc(v, F, 0)
-        print(Ax)
-        print(bx)
+        SIMPLE_res_x = np.linalg.norm(bx - np.matmul(Ax, u))
+        SIMPLE_res_y = np.linalg.norm(by - np.matmul(Ay, v))
+        SIMPLE_res = np.linalg.norm([SIMPLE_res_x, SIMPLE_res_y])
 
-        uplus1, res, resRel = self.gauss_seidel(Ax, bx, u)
-        vplus1, res, resRel = self.gauss_seidel(Ay, by, v)
-        print(uplus1)
-        print(vplus1)
-        
-        if it == 0:
-            uface_plus1 = self.face_velocity(uplus1, 1)
-            vface_plus1 = self.face_velocity(vplus1, 0)
-            Fpre = self.face_flux(uface_plus1, vface_plus1, zface)
-        else:
-            Fpre = F
-
-        Ap, bp = self.pressure_laplacian(Fpre, Ax)
-
-        p_field, res, resRel = self.gauss_seidel(Ap, bp, p)
-
-        delta_p = self.face_pressure(p_field)
-
-        Fcorr = self.face_flux_correction(Fpre, Ax, delta_p)
-
-        total_flux = self.face_flux_check(Fcorr)
-        # print(total_flux)
-
-        p_field_UR = p + self.alpha_p * (p_field - p)
-
-        ucorr, vcorr = self.cell_centre_correction(Ax, Ay, u, v, p_field_UR)
-
-        # print(ucorr)
-
-        res = np.linalg.norm(bx - np.matmul(Ax, ucorr))
-
-        return ucorr, vcorr, Fcorr, p, res
+        return SIMPLE_res
     
     def initial_residual(self, u, F):
 
@@ -225,36 +201,59 @@ class SIMPLE(LinearSystem):
             resRel = res_initial / res_initial
 
         return res_initial, resRel
+        
+    def SIMPLE_loop(self, u, v, F, p, it):
+
+        Ax, bx = self.momentum_disc(u, F, 1)
+        Ay, by = self.momentum_disc(v, F, 0)
+
+        uplus1, GS_res_x = self.gauss_seidel(Ax, bx, u)
+        vplus1, GS_res_y = self.gauss_seidel(Ay, by, v)
+
+        SIMPLE_res = self.residual(Ax, bx, Ay, by, uplus1, vplus1)
+
+        uface_plus1 = self.face_velocity(uplus1, 1)
+        vface_plus1 = self.face_velocity(vplus1, 0)
+        zface = np.zeros_like(vface_plus1)
+        Fpre = self.face_flux(uface_plus1, vface_plus1, zface)
+
+        Ap, bp = self.pressure_laplacian(Fpre, Ax, 0)
+
+        p_field = np.linalg.solve(Ap, bp).flatten() #self.gauss_seidel(Ap, bp, p)
+    
+        Fcorr = self.face_flux_correction(Fpre, Ax, p_field)
+        total_flux = self.face_flux_check(Fcorr)
+
+        p_field_UR = p + self.alpha_p * (p_field - p)
+
+        ucorr, vcorr = self.cell_centre_correction(Ax, Ay, u, v, p_field_UR)
+
+        return ucorr, vcorr, Fcorr, p_field_UR, SIMPLE_res, GS_res_x, GS_res_y
 
     def iterate(self, u, v, p, tol=1e-10, maxIts=10):
         
         uface = self.face_velocity(u, 1)
         vface = self.face_velocity(v, 0)
-        zface = vface
+        zface = np.zeros_like(vface)
         F = self.face_flux(uface, vface, zface)
 
-        res_initial, resRel = self.initial_residual(u, F)
-        res_ls = [res_initial]
-        resRel_ls = [resRel]
+        res_SIMPLE_ls = []
+        res_SIMPLE_y_ls = []
+        resX_GS_ls = []
+        resY_GS_ls = []
 
         it = 0
 
         for i in range(maxIts):
-            u, v, F, p, res = self.SIMPLE_loop(u, v, F, p, it)
+            print("Iteration: " + str(it+1))
+            u, v, F, p, SIMPLE_res, resX_GS, resY_GS = self.SIMPLE_loop(u, v, F, p, it)
             it += 1
-            if res_initial == 0:
-                resRel = 0
-            else:
-                resRel = res / res_initial
-            res_ls.append(res)
-            resRel_ls.append(resRel)
+            res_SIMPLE_ls.append(SIMPLE_res)
+            resX_GS_ls.append(resX_GS)
+            resY_GS_ls.append(resY_GS)
             break
-            if res < tol:
+            if SIMPLE_res < tol:
                 print(f"Simulation converged in {it} iterations")
                 break
-
-        # print(u)
-        # print(v)
-        # print(p)
-        # print(F)
-
+        
+        return u, v, p, res_SIMPLE_ls

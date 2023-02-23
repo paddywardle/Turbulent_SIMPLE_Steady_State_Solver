@@ -60,7 +60,7 @@ class LinearSystem:
                 d_mag = np.linalg.norm(cell_centre - face_centre)
                 A[cell, cell] += self.viscosity * face_mag / d_mag
                 if i in top_index:
-                    b[cell] += FN_boundary * BC
+                    b[cell] += FN_boundary * BC # CHECK THIS
                     b[cell] += (self.viscosity * face_mag / d_mag) * BC
                 continue
 
@@ -92,7 +92,7 @@ class LinearSystem:
 
         return A, b
     
-    def pressure_laplacian(self, Fpre, Au):
+    def pressure_laplacian(self, Fpre, Au, BC):
 
         """
         This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -112,6 +112,7 @@ class LinearSystem:
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
 
         for i in range(len(cell_owner_neighbour)):
 
@@ -119,11 +120,16 @@ class LinearSystem:
             neighbour = cell_owner_neighbour[i][1]
             face_area_vector = face_area_vectors[i]
             cell_centre = cell_centres[cell]
+            face_centre = face_centres[i]
             face_mag = np.linalg.norm(face_area_vector)
+            FN_cell = Fpre[i]
+            FN_neighbour = -Fpre[i]
 
             if neighbour == -1:
-
-                bp[cell] += Fpre[i]
+                # d_mag = np.linalg.norm(cell_centre - face_centre)
+                # Ap[cell, cell] += FN_cell
+                # bp[cell] += FN_neighbour * d_mag * BC # ASK ABOUT THIS!
+                bp[cell] += FN_cell
                 continue
 
             neighbour_centre = cell_centres[neighbour]
@@ -131,12 +137,18 @@ class LinearSystem:
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
             # diffusive diag contributions
-            Ap[cell, cell] += (self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
-            Ap[neighbour, neighbour] += (self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
+            Ap[cell, cell] += -(face_mag) / (Au[cell, cell] * d_mag)  #-(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
+            Ap[neighbour, neighbour] += -(face_mag) / (Au[neighbour, neighbour] * d_mag) #-(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += -(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
-            Ap[neighbour, cell] += -(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+            Ap[cell, neighbour] += (face_mag) / (Au[cell, cell] * d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
+            Ap[neighbour, cell] += (face_mag) / (Au[neighbour, neighbour] * d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+
+            bp[cell] += FN_cell
+            bp[neighbour] += FN_neighbour
+
+        # set reference point
+        Ap[0,0] *= 1.1
 
         return Ap, bp
     
@@ -154,32 +166,26 @@ class LinearSystem:
             np.array: solution from Gauss-Seidel algorithm.
 
         """
-
+        res_ls = []
+        res = 0
         for k in range(maxIts):
+            # forward sweep
             for i in range(len(A)):
                 u_new = b[i]
                 for j in range(len(A)):
                     if (j != i):
                         u_new -= A[i][j] * u[j]
                 u[i] = u_new / A[i][i]
+            # backward sweep
+            for i in reversed(range(len(A))):
+                u_new = b[i]
+                for j in reversed(range(len(A))):
+                    if (j != i):
+                        u_new -= A[i][j] * u[j]
+                u[i] = u_new / A[i][i]
+            res = np.sum(b - np.matmul(A, u))
+            res_ls.append(np.sum(b - np.matmul(A, u)))
+            if res < tol:
+                break
 
-        return u, 1
-    
-# if __name__ == "__main__":
-#     ls = LinearSystem(1, 1, 1)
-
-#     # x = np.array([0, 0, 0], dtype=float)                        
-#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]], dtype=float)
-#     # b = np.array([4,7,3], dtype=float)
-#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]])
-#     # b = np.array([4,7,3])
-#     # u = np.array([0, 0, 0])
-#     # print(ls.gauss_seidel(A, b, u))
-#     # A = np.array([[4, 1, 2],[3, 5, 1],[1, 1, 3]])
-#     # b = np.array([4,7,3])
-#     # u = np.array([0, 0, 0])
-#     # print(np.linalg.solve(A, b))
-
-#     b = np.array([[0.e+00],[0.e+00],[2.e-05],[2.e-05]], dtype=float)
-#     A = np.array([[ 6.31578947e-05, -1.00000000e-05, -1.00000000e-05,  0.00000000e+00], [-1.00000000e-05,  6.31578947e-05 , 0.00000000e+00 ,-1.00000000e-05], [-1.00000000e-05 , 0.00000000e+00  ,6.31578947e-05, -1.00000000e-05],[ 0.00000000e+00 ,-1.00000000e-05 ,-1.00000000e-05 , 6.31578947e-05]], dtype=float)
-#     print(np.linalg.solve(A, b))
+        return u, res
