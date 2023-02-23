@@ -58,14 +58,14 @@ class ReadFiles():
         """
 
         # call read_file function for each mesh characteristic and return arrays
-        points = np.asarray(self.ReadMeshFile(points_filename))
-        faces = np.asarray(self.ReadMeshFile(faces_filename), dtype=int)
-        cells = np.asarray(self.ReadMeshFile(cells_filename), dtype=int)
-        boundary = np.asarray(self.ReadMeshFile(boundary_filename), dtype=object)
+        points = np.asarray(self.ReadMeshFile(points_filename, boundary_filename))
+        faces = np.asarray(self.ReadMeshFile(faces_filename, boundary_filename), dtype=int)
+        cells = np.asarray(self.ReadMeshFile(cells_filename, boundary_filename), dtype=int)
+        boundary = np.asarray(self.ReadMeshFile(boundary_filename, boundary_filename), dtype=object)
 
         return points, faces, cells, boundary
 
-    def ReadMeshFile(self, filename):
+    def ReadMeshFile(self, filename, boundary_filename):
 
         """
         Function to read mesh single file
@@ -81,7 +81,7 @@ class ReadFiles():
             for line in f.readlines():
                 line = line.strip()
                 ls = line.strip('()').split()
-                if filename != "boundary_patches2.txt":
+                if filename != boundary_filename:
                     ls = [float(i) for i in ls]
                 array.append(ls)
 

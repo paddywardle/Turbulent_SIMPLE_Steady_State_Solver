@@ -16,7 +16,7 @@
         "alpha_p": 0.2,
         "SIMPLE":{
             "tol": 1e-10,
-            "its": 25 
+            "its": 1
         },
         "Gauss-Seidel":{
             "tol": 1e-6,

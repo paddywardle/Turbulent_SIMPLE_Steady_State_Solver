@@ -54,9 +54,9 @@ if __name__ == "__main__":
     v_field = ReadFile("Results/v_field.txt")
     p_field = ReadFile("Results/p_field.txt")
 
-    velocity_ax = velocity_field_plot(u_field, p_field, 40, 0.1)
-    #pressure_ax = pressure_field(p_field, 40, 0.1)
-    #plt.show()
+    velocity_ax = velocity_field_plot(u_field, p_field, 2, 0.1)
+    pressure_ax = pressure_field(p_field, 2, 0.1)
+    plt.show()
 
 
 

@@ -211,6 +211,12 @@ class SIMPLE(LinearSystem):
         vplus1, GS_res_y = self.gauss_seidel(Ay, by, v)
 
         SIMPLE_res = self.residual(Ax, bx, Ay, by, uplus1, vplus1)
+        print(self.mesh.face_area_vectors())
+
+        print(Ax)
+        print(bx)
+        print(Ay)
+        print(by)
 
         uface_plus1 = self.face_velocity(uplus1, 1)
         vface_plus1 = self.face_velocity(vplus1, 0)
@@ -218,6 +224,9 @@ class SIMPLE(LinearSystem):
         Fpre = self.face_flux(uface_plus1, vface_plus1, zface)
 
         Ap, bp = self.pressure_laplacian(Fpre, Ax, 0)
+
+        print(Ap)
+        print(bp)
 
         p_field = np.linalg.solve(Ap, bp).flatten() #self.gauss_seidel(Ap, bp, p)
     
@@ -251,7 +260,6 @@ class SIMPLE(LinearSystem):
             res_SIMPLE_ls.append(SIMPLE_res)
             resX_GS_ls.append(resX_GS)
             resY_GS_ls.append(resY_GS)
-            break
             if SIMPLE_res < tol:
                 print(f"Simulation converged in {it} iterations")
                 break
