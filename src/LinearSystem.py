@@ -1,8 +1,13 @@
 from Mesh import Mesh
 from SparseMatrixCR import SparseMatrixCR
 import numpy as np
+from scipy import sparse
 
 class LinearSystem:
+
+    """
+    Function to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
+    """
 
     def __init__(self, mesh, viscosity, alpha_u):
 
@@ -10,7 +15,7 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, F, BC):
+    def momentum_disc(self, u, F, BC, format="dense"):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -90,22 +95,27 @@ class LinearSystem:
             A[i, i] /= self.alpha_u
             b[i] += ((1-self.alpha_u)/self.alpha_u) * u[i] * A[i, i]
 
+        if format == "sparse":
+            A = sparse.csr_array(A)
+            b = sparse.csr_array(b)
+
         return A, b
     
-    def pressure_laplacian(self, Fpre, Au, BC):
+    def pressure_laplacian(self, Fpre, raP, BC, format="dense"):
 
         """
         This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
-            uFpre (np.array): x face flux
-            vFpre (np.array): y face flux
+            Fpre (np.array): face flux
+            raP (np.array): reciprocal of momentum diagonal coefficients
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
         """
 
         N = len(self.mesh.cells)
+
         Ap = np.zeros((N, N))
         bp = np.zeros((N, 1))
 
@@ -126,9 +136,6 @@ class LinearSystem:
             FN_neighbour = -Fpre[i]
 
             if neighbour == -1:
-                # d_mag = np.linalg.norm(cell_centre - face_centre)
-                # Ap[cell, cell] += FN_cell
-                # bp[cell] += FN_neighbour * d_mag * BC # ASK ABOUT THIS!
                 bp[cell] += FN_cell
                 continue
 
@@ -137,18 +144,22 @@ class LinearSystem:
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
             # diffusive diag contributions
-            Ap[cell, cell] += -(face_mag) / (Au[cell, cell] * d_mag)  #-(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
-            Ap[neighbour, neighbour] += -(face_mag) / (Au[neighbour, neighbour] * d_mag) #-(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
+            Ap[cell, cell] += -(face_mag * raP[cell]) / (d_mag)  #-(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
+            Ap[neighbour, neighbour] += -(face_mag * raP[neighbour]) / (d_mag) #-(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += (face_mag) / (Au[cell, cell] * d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
-            Ap[neighbour, cell] += (face_mag) / (Au[neighbour, neighbour] * d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+            Ap[cell, neighbour] += (face_mag * raP[cell]) / (d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
+            Ap[neighbour, cell] += (face_mag * raP[neighbour]) / (d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
 
             bp[cell] += FN_cell
             bp[neighbour] += FN_neighbour
 
         # set reference point
         Ap[0,0] *= 1.1
+
+        if format == "sparse":
+            Ap = sparse.csr_array(Ap)
+            bp = sparse.csr_array(Ap)
 
         return Ap, bp
     
@@ -170,19 +181,19 @@ class LinearSystem:
         res = 0
         for k in range(maxIts):
             # forward sweep
-            for i in range(len(A)):
+            for i in range(A.shape[0]):
                 u_new = b[i]
-                for j in range(len(A)):
+                for j in range(A.shape[0]):
                     if (j != i):
-                        u_new -= A[i][j] * u[j]
-                u[i] = u_new / A[i][i]
+                        u_new -= A[i,j] * u[j]
+                u[i] = u_new / A[i,i]
             # backward sweep
-            for i in reversed(range(len(A))):
+            for i in reversed(range(A.shape[0])):
                 u_new = b[i]
-                for j in reversed(range(len(A))):
+                for j in reversed(range(A.shape[0])):
                     if (j != i):
-                        u_new -= A[i][j] * u[j]
-                u[i] = u_new / A[i][i]
+                        u_new -= A[i,j] * u[j]
+                u[i] = u_new / A[i,i]
             res = np.sum(b - np.matmul(A, u))
             res_ls.append(np.sum(b - np.matmul(A, u)))
             if res < tol:
