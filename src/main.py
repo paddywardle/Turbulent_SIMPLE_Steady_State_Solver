@@ -18,14 +18,14 @@ if __name__ == "__main__":
     viscosity = L/Re
 
     # read in mesh and initialise mesh class using data
-    points, faces, cells, boundary = read.ReadMesh("points_test.txt", "faces_test.txt", "cells_test.txt", "boundary_patches.txt")
+    points, faces, cells, boundary = read.ReadMesh("points.txt", "faces.txt", "cells.txt", "boundary_patches2.txt")
 
     mesh = Mesh(points, faces, cells, boundary)
 
     # set initial conditions for the simulation (Ux, Uy, and P) <- assuming fluid is at rest at the start of the simulation
-    u_field = read.ReadInitialConds("InitialConds/u_field.txt")
-    v_field = read.ReadInitialConds("InitialConds/v_field.txt")
-    p_field = read.ReadInitialConds("InitialConds/p_field.txt")
+    u_field = read.ReadInitialConds("InitialConds/u_field_big.txt")
+    v_field = read.ReadInitialConds("InitialConds/v_field_big.txt")
+    p_field = read.ReadInitialConds("InitialConds/p_field_big.txt")
 
     # timing the simulation
     start_time = time.perf_counter()
