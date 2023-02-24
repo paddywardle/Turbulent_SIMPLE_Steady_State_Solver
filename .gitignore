@@ -1,3 +1,4 @@
+plots/plot_results/*
 Results/*
 InitialConds/*
 MeshFiles/*
