@@ -19,7 +19,7 @@ def convergence(residuals):
     plt.plot(range(len(residuals)), residuals)
     plt.xlabel("Iterations")
     plt.ylabel("Residual")
-    plt.title("Gauss-Seidel Convergence Plot")
+    plt.title("Convergence Plot")
     plt.show()
 
 def velocity_field_plot(ux_field, uy_field, ncells, d):
@@ -31,21 +31,29 @@ def velocity_field_plot(ux_field, uy_field, ncells, d):
     uy_field = np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0)
 
     mags = np.linalg.norm(np.dstack((ux_field, uy_field)), axis=2)
-    axis_positions = np.linspace(0, ncells, 6)
+    axis_positions = np.linspace(0, 39, 6)
+    axis_labels = [round((d/6), 2) * i for i in range(6)]
 
-    ax = plt.gca()
+    fig, ax = plt.subplots()
     ax.quiver(x, y, ux_field, uy_field)
-    ax.imshow(mags, interpolation="spline16")
-    #ax.set_xticks(axis_positions)
-    #ax.set_xticklabels(axis_labels)
-    plt.show()
+    im = ax.imshow(mags, interpolation="spline16", cmap="jet")
+    #ax.colorbar()
+    ax.set_xticks(axis_positions)
+    ax.set_xticklabels(axis_labels)
+    ax.set_yticks(axis_positions)
+    axis_labels.reverse()
+    ax.set_yticklabels(axis_labels)
+    fig.colorbar(im)
+    ax.set_title("Velocity Field")
+    return ax
 
 def pressure_field(p_field, ncells, d):
 
     p_field = np.flip(np.reshape(p_field, (ncells, ncells)), axis=0)
     fig, ax = plt.subplots()
-    im = ax.imshow(p_field, interpolation="spline16", extent=[0, d, 0, d])
+    im = ax.imshow(p_field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
     fig.colorbar(im)
+    ax.set_title("Pressure Field")
     return ax
 
 if __name__ == "__main__":
@@ -53,9 +61,13 @@ if __name__ == "__main__":
     u_field = ReadFile("Results/u_field.txt")
     v_field = ReadFile("Results/v_field.txt")
     p_field = ReadFile("Results/p_field.txt")
+    residuals = ReadFile("Results/residuals.txt")
 
-    velocity_ax = velocity_field_plot(u_field, p_field, 2, 0.1)
-    pressure_ax = pressure_field(p_field, 2, 0.1)
+    velocity_ax = velocity_field_plot(u_field, p_field, 40, 0.1)
+    plt.show()
+    pressure_ax = pressure_field(p_field, 40, 0.1)
+    plt.show()
+    convergence(residuals)
     plt.show()
 
 
