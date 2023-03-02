@@ -9,7 +9,7 @@ def read_owner_neighbours(owner_filename, neighbour_filename):
 
 def write_file(filename, data):
 
-    with open("MeshFiles/"+filename, "w") as f:
+    with open("MeshFiles/100x100/"+filename, "w") as f:
         for i in range(len(data)):
             f.write("(")
             for j in range(len(data[i])):
@@ -22,7 +22,7 @@ def read_file(filename):
 
     lst = []
 
-    with open("MeshFiles/"+filename) as f:
+    with open("MeshFiles/100x100/"+filename) as f:
         for line in f.readlines():
             lst.append(int(line))
 

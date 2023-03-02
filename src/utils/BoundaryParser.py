@@ -3,7 +3,7 @@ def boundary_parser():
     file = []
     patches = []
 
-    with open("MeshFiles/boundary.txt") as f:
+    with open("MeshFiles/100x100/boundary.txt") as f:
         for line in f.readlines():
             line_stripped = line.strip().strip(';')
             file.append(line_stripped.split())
@@ -18,7 +18,7 @@ def boundary_parser():
             boundary_faces = list(range(int(file[i+1][1]), int(file[i+1][1])+int(file[i][1])))
             patches.append(boundary_faces)
     
-    with open("MeshFiles/boundary_patches.txt", "w") as f:
+    with open("MeshFiles/100x100/boundary_patches.txt", "w") as f:
         for ls in patches:
             if type(ls[0]) == str:
                 f.write(ls[0] + "\n")
