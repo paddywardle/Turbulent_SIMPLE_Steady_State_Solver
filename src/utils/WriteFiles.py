@@ -21,10 +21,10 @@ class WriteFiles():
         """
     
         with open(f"Results/SIM {self.SIM_num}/"+filename+".txt", "w") as f:
-            for i in range(len(field)):
-                f.write(str(field[i]) + "\n")
+            for i in field:
+                f.write(str(i) + "\n")
 
-    def WriteResults(self, u_field, v_field, p_field, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure):
+    def WriteResults(self, u_field, v_field, p_field, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, sim_time):
 
         """
         Function to write out the velocity fields, pressure field and residuals
@@ -45,3 +45,7 @@ class WriteFiles():
         self.WriteFile("resx_momentum", resx_momentum_ls)
         self.WriteFile("resy_momentum", resy_momentum_ls)
         self.WriteFile("res_pressure", res_pressure)
+
+
+        with open(f"Results/SIM {self.SIM_num}/"+"SIM_time"+".txt", "w") as f:
+            f.write("Simulation Time (seconds): " + str(sim_time))
