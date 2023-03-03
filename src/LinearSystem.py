@@ -59,26 +59,24 @@ class LinearSystem:
             cell_centre = cell_centres[cell]
             face_mag = np.linalg.norm(face_area_vector)
 
+            FN_cell = F[i]
+            FN_neighbour = -F[i]
+
             if neighbour == -1:
-                FN_cell = F[i]
-                FN_boundary = -F[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
                 A[cell, cell] += self.viscosity * face_mag / d_mag
                 if i in top_index:
-                    b[cell] += FN_boundary * BC # CHECK THIS
+                    b[cell] -= FN_cell * BC # CHECK THIS <-MAYBE
                     b[cell] += (self.viscosity * face_mag / d_mag) * BC
+
                 continue
 
             neighbour_centre = cell_centres[neighbour]
-
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
-            FN_cell = F[i]
-            FN_neighbour = -F[i]
             # convective diag contributions
             A[cell, cell] += max(FN_cell, 0)
             A[neighbour, neighbour] += max(FN_neighbour, 0)
-
             # diffusive diag contributions
             A[cell, cell] += self.viscosity * face_mag / d_mag
             A[neighbour, neighbour] += self.viscosity * face_mag / d_mag
@@ -88,8 +86,8 @@ class LinearSystem:
             A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive off-diag contributions
-            A[cell, neighbour] += -self.viscosity * face_mag / d_mag
-            A[neighbour, cell] += -self.viscosity * face_mag / d_mag
+            A[cell, neighbour] -= self.viscosity * face_mag / d_mag
+            A[neighbour, cell] -= self.viscosity * face_mag / d_mag
 
         for i in range(len(A)):
             A[i, i] /= self.alpha_u
@@ -101,7 +99,7 @@ class LinearSystem:
 
         return A, b
     
-    def pressure_laplacian(self, Fpre, raP, BC, format="dense"):
+    def pressure_laplacian(self, F, raP, BC, format="dense"):
 
         """
         This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -117,7 +115,7 @@ class LinearSystem:
         N = len(self.mesh.cells)
 
         Ap = np.zeros((N, N))
-        bp = np.zeros((N, 1))
+        bp = np.zeros((N, 1)).flatten()
 
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
@@ -126,30 +124,31 @@ class LinearSystem:
 
         for i in range(len(cell_owner_neighbour)):
 
+            # if face_area_vectors[i][2] != 0:
+            #     continue
+
             cell = cell_owner_neighbour[i][0]
             neighbour = cell_owner_neighbour[i][1]
             face_area_vector = face_area_vectors[i]
             cell_centre = cell_centres[cell]
-            face_centre = face_centres[i]
             face_mag = np.linalg.norm(face_area_vector)
-            FN_cell = Fpre[i]
-            FN_neighbour = -Fpre[i]
+            FN_cell = F[i]
+            FN_neighbour = -F[i]
 
             if neighbour == -1:
                 bp[cell] += FN_cell
                 continue
 
             neighbour_centre = cell_centres[neighbour]
-
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
             # diffusive diag contributions
-            Ap[cell, cell] += -(face_mag * raP[cell]) / (d_mag)  #-(self.viscosity * face_mag / d_mag)  * (1 / Au[cell, cell])
-            Ap[neighbour, neighbour] += -(face_mag * raP[neighbour]) / (d_mag) #-(self.viscosity * face_mag / d_mag)  * (1 / Au[neighbour, neighbour])
+            Ap[cell, cell] -= (face_mag / d_mag) * raP[cell]
+            Ap[neighbour, neighbour] -= (face_mag / d_mag) * raP[neighbour]
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += (face_mag * raP[cell]) / (d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[cell, cell])
-            Ap[neighbour, cell] += (face_mag * raP[neighbour]) / (d_mag) #(self.viscosity * face_mag / d_mag) * (1 / Au[neighbour, neighbour])
+            Ap[cell, neighbour] += (face_mag / d_mag) * raP[cell]
+            Ap[neighbour, cell] += (face_mag / d_mag) * raP[neighbour]
 
             bp[cell] += FN_cell
             bp[neighbour] += FN_neighbour
@@ -177,8 +176,6 @@ class LinearSystem:
             np.array: solution from Gauss-Seidel algorithm.
 
         """
-        res_ls = []
-        res = 0
         for k in range(maxIts):
             # forward sweep
             for i in range(A.shape[0]):
@@ -195,8 +192,7 @@ class LinearSystem:
                         u_new -= A[i,j] * u[j]
                 u[i] = u_new / A[i,i]
             res = np.sum(b - np.matmul(A, u))
-            res_ls.append(np.sum(b - np.matmul(A, u)))
             if res < tol:
                 break
 
-        return u, res
+        return u
