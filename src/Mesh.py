@@ -296,7 +296,7 @@ class Mesh:
             # append current_neighbour to overall neighbours list corresponding to cells label
             neighbours.append(current_neighbours)
 
-        return np.array(neighbours)
+        return neighbours
 
     def cell_owner_neighbour(self):
 
@@ -323,8 +323,8 @@ class Mesh:
                 neighbour.append(-1)
                 continue
             # appending lowest cell label to owner list (convention)
-            owner.append(cells_with_face[0][0])
+            owner.append(min(cells_with_face[0]))
             # appending highest cell label to neighbour list (convention)
-            neighbour.append(cells_with_face[0][1])
+            neighbour.append(max(cells_with_face[0]))
         
         return np.column_stack((owner, neighbour))
