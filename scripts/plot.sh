@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python ./plots/plot_script.py --SIM_num $1
+python -OO ./plots/plot_script.py --SIM_num $1
