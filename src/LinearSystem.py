@@ -15,7 +15,7 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, F, BC, format="dense"):
+    def momentum_disc(self, u, F, BC, conv_scheme="upwind", format="dense"):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -49,8 +49,8 @@ class LinearSystem:
 
         for i in range(len(cell_owner_neighbour)):
 
-            if face_area_vectors[i][2] != 0:
-                continue
+            # if face_area_vectors[i][2] != 0:
+            #     continue
 
             cell = cell_owner_neighbour[i][0]
             neighbour = cell_owner_neighbour[i][1]
@@ -74,16 +74,32 @@ class LinearSystem:
             neighbour_centre = cell_centres[neighbour]
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
-            # convective diag contributions
-            A[cell, cell] += max(FN_cell, 0)
-            A[neighbour, neighbour] += max(FN_neighbour, 0)
+            if conv_scheme == "centred":
+
+                fN = np.linalg.norm(neighbour_centre - face_centre)
+                fP = np.linalg.norm(cell_centre - face_centre)
+                fxO = fP/d_mag
+                fxN = fN/d_mag
+                
+                # convective diag contributions
+                A[cell, cell] += fxN * FN_cell
+                A[neighbour, neighbour] += fxO * FN_neighbour
+
+                # convective off-diag contributions
+                A[cell, neighbour] += (1-fxN) * FN_cell
+                A[neighbour, cell] += (1-fxO) * FN_neighbour
+            else:
+                # convective diag contributions
+                A[cell, cell] += max(FN_cell, 0)
+                A[neighbour, neighbour] += max(FN_neighbour, 0)
+
+                # convective off-diag contributions
+                A[cell, neighbour] += min(FN_cell, 0)
+                A[neighbour, cell] += min(FN_neighbour, 0)
+
             # diffusive diag contributions
             A[cell, cell] += self.viscosity * face_mag / d_mag
             A[neighbour, neighbour] += self.viscosity * face_mag / d_mag
-
-            # convective off-diag contributions
-            A[cell, neighbour] += min(FN_cell, 0)
-            A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive off-diag contributions
             A[cell, neighbour] -= self.viscosity * face_mag / d_mag
