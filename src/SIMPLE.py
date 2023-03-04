@@ -9,9 +9,9 @@ class SIMPLE(LinearSystem):
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
     """
 
-    def __init__(self, mesh, viscosity, alpha_u, alpha_p):
+    def __init__(self, mesh, conv_scheme, viscosity, alpha_u, alpha_p):
         
-        LinearSystem.__init__(self, mesh, viscosity, alpha_u)
+        LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
@@ -495,7 +495,7 @@ class SIMPLE(LinearSystem):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, F, p, it, conv_scheme, format="dense"):
+    def SIMPLE_loop(self, u, v, z, F, p, it, format="dense"):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -521,9 +521,9 @@ class SIMPLE(LinearSystem):
         delta_px, delta_py, delta_pz = self.cell_pressure_backward(p)
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, 1, conv_scheme, format)
-        Ay, by = self.momentum_disc(v, F, 0, conv_scheme, format)
-        Az, bz = self.momentum_disc(z, F, 0, conv_scheme, format)
+        Ax, bx = self.momentum_disc(u, F, 1, format)
+        Ay, by = self.momentum_disc(v, F, 0, format)
+        Az, bz = self.momentum_disc(z, F, 0, format)
 
         uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200) #self.gauss_seidel(Ax, bx, u)
         vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200) #self.gauss_seidel(Ay, by, v)
@@ -593,7 +593,7 @@ class SIMPLE(LinearSystem):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, F, p, i, "upwind", "dense")
+            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, F, p, i, "dense")
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)

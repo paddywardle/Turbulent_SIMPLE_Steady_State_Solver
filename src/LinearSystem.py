@@ -9,13 +9,14 @@ class LinearSystem:
     Function to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
     """
 
-    def __init__(self, mesh, viscosity, alpha_u):
+    def __init__(self, mesh, conv_scheme, viscosity, alpha_u):
 
         self.mesh = mesh
+        self.conv_scheme = conv_scheme
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_disc(self, u, F, BC, conv_scheme="upwind", format="dense"):
+    def momentum_disc(self, u, F, BC, format="dense"):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -74,7 +75,7 @@ class LinearSystem:
             neighbour_centre = cell_centres[neighbour]
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
-            if conv_scheme == "centred":
+            if self.conv_scheme == "centred":
 
                 fN = np.linalg.norm(neighbour_centre - face_centre)
                 fP = np.linalg.norm(cell_centre - face_centre)

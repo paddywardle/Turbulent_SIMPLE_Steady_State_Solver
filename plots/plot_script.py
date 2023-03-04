@@ -94,7 +94,7 @@ def pressure_convergence(residuals, SIM_num):
 
 def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
     
-    quiver_step = 2
+    quiver_step = 1
     ux_field = np.pad(np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0), (1,1))
     uy_field = np.pad(np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0), (1,1))
     uz_field = np.pad(np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0), (1,1))
@@ -130,7 +130,7 @@ def field(field, SIM_num, ncells, d, filename):
         ax.set_title("U Field")
         plt.savefig(f"Results/SIM {SIM_num}/u_field.png")
     elif filename == "y":
-        field = np.pad(np.flip(np.reshape(field, (ncells, ncells)), axis=0), (1,1))
+        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0)
         fig, ax = plt.subplots()
         im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
         fig.colorbar(im)
@@ -144,7 +144,7 @@ def field(field, SIM_num, ncells, d, filename):
         ax.set_title("Z Field")
         plt.savefig(f"Results/SIM {SIM_num}/z_field.png")
     else:
-        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0)
+        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
         fig, ax = plt.subplots()
         im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
         fig.colorbar(im)
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     SIM_num = args.SIM_num
-    ncells = 40
+    ncells = 20
     
     u_field = ReadFile(f"Results/SIM {SIM_num}/u_field.txt")
     v_field = ReadFile(f"Results/SIM {SIM_num}/v_field.txt")

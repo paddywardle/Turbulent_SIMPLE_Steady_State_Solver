@@ -37,15 +37,16 @@ class ReadFiles():
         Re = simulation_sets['Re']
         alpha_u = simulation_sets['alpha_u']
         alpha_p = simulation_sets['alpha_p']
+        conv_scheme = simulation_sets["SIMPLE"]['conv_scheme']
         SIMPLE_tol = simulation_sets["SIMPLE"]['tol']
         SIMPLE_its = simulation_sets["SIMPLE"]["its"]
         tol_GS = simulation_sets['Gauss-Seidel']['tol']
         maxIts = simulation_sets['Gauss-Seidel']['maxIts']
         L = float(MESH_sets['x1']) - float(MESH_sets['x0'])
         
-        return Re, alpha_u, alpha_p, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L
+        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L
 
-    def ReadMesh(self, points_filename, faces_filename, cells_filename, boundary_filename):
+    def ReadMesh(self, points_filename, faces_filename, cells_filename, owners_filename, neighbours_filename, boundary_filename):
 
         """
         Function to read different mesh files
@@ -61,9 +62,11 @@ class ReadFiles():
         points = np.asarray(self.ReadMeshFile(points_filename, boundary_filename))
         faces = np.asarray(self.ReadMeshFile(faces_filename, boundary_filename), dtype=int)
         cells = np.asarray(self.ReadMeshFile(cells_filename, boundary_filename), dtype=int)
+        owners = np.asarray(self.ReadMeshFile(owners_filename, boundary_filename), dtype=int)
+        neighbours = np.asarray(self.ReadMeshFile(neighbours_filename, boundary_filename), dtype=int)
         boundary = np.asarray(self.ReadMeshFile(boundary_filename, boundary_filename), dtype=object)
 
-        return points, faces, cells, boundary
+        return points, faces, cells, owners, neighbours, boundary
 
     def ReadMeshFile(self, filename, boundary_filename):
 

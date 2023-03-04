@@ -25,19 +25,19 @@ if __name__ == "__main__":
     write = WriteFiles(SIM_num)
 
     # Read settings
-    Re, alpha_u, alpha_p, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L = read.ReadSettings('config/config.json')
+    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L = read.ReadSettings('config/config.json')
 
     # calculate kinematic viscosity
     viscosity = L/Re
 
     # files directory
-    directory = "40x40"
+    directory = "20x20"
 
     # read in mesh and initialise mesh class using data
-    points, faces, cells, boundary = read.ReadMesh(directory+"/points.txt", directory+"/faces.txt", directory+"/cells.txt", directory+"/boundary_patches.txt")
+    points, faces, cells, owners, neighbours, boundary = read.ReadMesh(directory+"/points.txt", directory+"/faces.txt", directory+"/cells.txt", 
+                                                   directory+"/owner.txt", directory+"/neighbour.txt", directory+"/boundary_patches.txt")
 
-    mesh = Mesh(points, faces, cells, boundary)
-    print(mesh.cell_owner_neighbour()[:20])
+    mesh = Mesh(points, faces, cells, owners, neighbours, boundary)
 
     # set initial conditions for the simulation (Ux, Uy, and P) <- assuming fluid is at rest at the start of the simulation
     u_field = read.ReadInitialConds("InitialConds/"+directory+"/u_field.txt")
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # timing the simulation
     start_time = time.perf_counter()
 
-    simple = SIMPLE(mesh, viscosity, alpha_u, alpha_p)
+    simple = SIMPLE(mesh, conv_scheme, viscosity, alpha_u, alpha_p)
 
     u, v, z, p, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure = simple.iterate(u_field, v_field, p_field, SIMPLE_tol, SIMPLE_its)
 

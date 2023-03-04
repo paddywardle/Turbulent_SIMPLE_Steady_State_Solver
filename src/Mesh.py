@@ -4,11 +4,13 @@ from scipy.spatial import ConvexHull
 
 class Mesh:
 
-    def __init__(self, points, faces, cells, boundary_patches):
+    def __init__(self, points, faces, cells, owners, neighbours, boundary_patches):
 
         self.points = points
         self.faces = faces
         self.cells = cells
+        self.owners = owners
+        self.neighbours = neighbours
         self.boundary_patches = boundary_patches
 
     def __repr__(self):
@@ -283,7 +285,7 @@ class Mesh:
 
         neighbours = []
 
-        for i in range(len(self.cells)):
+        for i in range(self.num_cells()):
             current_neighbours = []
             # looping through cells again
             for j in range(len(self.cells)):
@@ -311,20 +313,27 @@ class Mesh:
         owner = []
         neighbour = []
 
-        # looping through faces
-        for face in range(len(self.faces)):
-            # search for indices of face in cell array (they'll be 2 for internal faces, 1 for boundary faces)
-            cells_with_face = np.where(self.cells == face)
-            # testing for boundary face
-            if len(cells_with_face[0]) == 1:
-                # appending cell number to owner list
-                owner.append(cells_with_face[0][0])
-                # appending -1 to neighbour list as it is a boundary face
-                neighbour.append(-1)
+        # # looping through faces
+        # for face in range(len(self.faces)):
+        #     # search for indices of face in cell array (they'll be 2 for internal faces, 1 for boundary faces)
+        #     cells_with_face = np.where(self.cells == face)
+        #     # testing for boundary face
+        #     if len(cells_with_face[0]) == 1:
+        #         # appending cell number to owner list
+        #         owner.append(cells_with_face[0][0])
+        #         # appending -1 to neighbour list as it is a boundary face
+        #         neighbour.append(-1)
+        #         continue
+        #     # appending lowest cell label to owner list (convention)
+        #     owner.append(min(cells_with_face[0]))
+        #     # appending highest cell label to neighbour list (convention)
+        #     neighbour.append(max(cells_with_face[0]))
+
+        for i in range(len(self.owners)):
+            owner.append(self.owners[i])
+            if i > len(self.neighbours) - 1:
+                neighbour.append([-1])
                 continue
-            # appending lowest cell label to owner list (convention)
-            owner.append(min(cells_with_face[0]))
-            # appending highest cell label to neighbour list (convention)
-            neighbour.append(max(cells_with_face[0]))
+            neighbour.append(self.neighbours[i])
         
         return np.column_stack((owner, neighbour))
