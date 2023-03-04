@@ -317,7 +317,7 @@ class SIMPLE(LinearSystem):
 
         delta_px /= d_mag
         delta_py /= d_mag
-
+ 
         return delta_px, delta_py, delta_pz
     
     def cell_pressure(self, p_field):
@@ -495,7 +495,7 @@ class SIMPLE(LinearSystem):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, F, p, it, format="dense"):
+    def SIMPLE_loop(self, u, v, z, F, p, it, conv_scheme, format="dense"):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -517,15 +517,15 @@ class SIMPLE(LinearSystem):
             GS_res_y (float): final residual of y Gauss-seidel loop
         """
 
-        # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, 1, format)
-        Ay, by = self.momentum_disc(v, F, 0, format)
-        Az, bz = self.momentum_disc(z, F, 0, format)
-        # print(F)
-        # print(Ax)
-        print(Ax[390,390], Ax[399,399], Ax[200,200])
+        # pressure gradient
+        delta_px, delta_py, delta_pz = self.cell_pressure_backward(p)
 
-        uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200)#self.gauss_seidel(Ax, bx, u)
+        # Momentum Predictor
+        Ax, bx = self.momentum_disc(u, F, 1, conv_scheme, format)
+        Ay, by = self.momentum_disc(v, F, 0, conv_scheme, format)
+        Az, bz = self.momentum_disc(z, F, 0, conv_scheme, format)
+
+        uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200) #self.gauss_seidel(Ax, bx, u)
         vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200) #self.gauss_seidel(Ay, by, v)
         zplus1, exitcode = bicg(Az, bz, x0=z, maxiter=200)
 
@@ -547,10 +547,6 @@ class SIMPLE(LinearSystem):
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
-        print(Fpre[390], Fpre[399], Fpre[200])
-        print(Ap[390,390], Ap[399,399], Ap[200,200])
-        print(bp[390], bp[399], bp[200])
-
         # Face flux correction
         Fcorr = self.face_flux_correction(Fpre, raP, p_field)
 
@@ -561,11 +557,11 @@ class SIMPLE(LinearSystem):
         p_field = p + self.alpha_p * (p_field - p)
 
         # Cell-centred correction
-        u, v, z = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
+        uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
 
-        res_SIMPLE = [self.residual(Ax, bx, u), self.residual(Ay, by, v)]
+        res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return u, v, z, Fcorr, p_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
+        return uplus1, vplus1, zplus1, Fcorr, p_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
     def iterate(self, u, v, p, tol=1e-6, maxIts=100):
     
@@ -597,9 +593,7 @@ class SIMPLE(LinearSystem):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            uplus1, vplus1, zplus1, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, F, p, i, "dense")
-            res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
-            u, v, z = uplus1, vplus1, zplus1
+            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, F, p, i, "upwind", "dense")
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
