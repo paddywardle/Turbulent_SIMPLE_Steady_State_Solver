@@ -31,12 +31,13 @@ if __name__ == "__main__":
     viscosity = L/Re
 
     # files directory
-    directory = "20x20"
+    directory = "40x40"
 
     # read in mesh and initialise mesh class using data
     points, faces, cells, boundary = read.ReadMesh(directory+"/points.txt", directory+"/faces.txt", directory+"/cells.txt", directory+"/boundary_patches.txt")
 
     mesh = Mesh(points, faces, cells, boundary)
+    print(mesh.cell_owner_neighbour()[:20])
 
     # set initial conditions for the simulation (Ux, Uy, and P) <- assuming fluid is at rest at the start of the simulation
     u_field = read.ReadInitialConds("InitialConds/"+directory+"/u_field.txt")
