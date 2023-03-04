@@ -93,19 +93,21 @@ def pressure_convergence(residuals, SIM_num):
     plt.close()
 
 def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
-
-    x, y = np.meshgrid(np.linspace(0, ncells, ncells), np.linspace(0, ncells, ncells))
-
-    ux_field = np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0)
-    uy_field = np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0)
-    uz_field = np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0)
+    
+    quiver_step = 2
+    ux_field = np.pad(np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0), (1,1))
+    uy_field = np.pad(np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0), (1,1))
+    uz_field = np.pad(np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0), (1,1))
+    x, y = np.meshgrid(np.linspace(0, ux_field.shape[0], ux_field.shape[1]), np.linspace(0, ux_field.shape[1], ux_field.shape[0]))
+    # setting moving wall
+    ux_field[0,:] = 1
 
     mags = np.linalg.norm(np.dstack((ux_field, uy_field)), axis=2)
     axis_positions = np.linspace(0, ncells-1, 6)
     axis_labels = [round((d/len(axis_positions)), 2) * i for i in range(len(axis_positions))]
 
     fig, ax = plt.subplots()
-    ax.quiver(x, y, ux_field, uy_field)
+    ax.quiver(x[::quiver_step,::quiver_step], y[::quiver_step,::quiver_step], ux_field[::quiver_step,::quiver_step], uy_field[::quiver_step,::quiver_step])
     im = ax.imshow(mags, interpolation="spline16", cmap="jet")
     ax.set_xticks(axis_positions)
     ax.set_xticklabels(axis_labels)
@@ -119,21 +121,33 @@ def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
 
 def field(field, SIM_num, ncells, d, filename):
 
-    field = np.flip(np.reshape(field, (ncells, ncells)), axis=0)
-    fig, ax = plt.subplots()
-    im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
-    fig.colorbar(im)
-
     if filename == "x":
+        field = np.pad(np.flip(np.reshape(field, (ncells, ncells)), axis=0), (1,1))
+        field[0,:] = 1
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        fig.colorbar(im)
         ax.set_title("U Field")
         plt.savefig(f"Results/SIM {SIM_num}/u_field.png")
     elif filename == "y":
+        field = np.pad(np.flip(np.reshape(field, (ncells, ncells)), axis=0), (1,1))
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        fig.colorbar(im)
         ax.set_title("V Field")
         plt.savefig(f"Results/SIM {SIM_num}/v_field.png")
     elif filename == "z":
+        field = np.pad(np.flip(np.reshape(field, (ncells, ncells)), axis=0), (1,1))
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        fig.colorbar(im)
         ax.set_title("Z Field")
         plt.savefig(f"Results/SIM {SIM_num}/z_field.png")
     else:
+        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0)
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        fig.colorbar(im)
         ax.set_title("Pressure field")
         plt.savefig(f"Results/SIM {SIM_num}/p_field.png")
 
@@ -151,7 +165,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     SIM_num = args.SIM_num
-    ncells = 20
+    ncells = 40
     
     u_field = ReadFile(f"Results/SIM {SIM_num}/u_field.txt")
     v_field = ReadFile(f"Results/SIM {SIM_num}/v_field.txt")
