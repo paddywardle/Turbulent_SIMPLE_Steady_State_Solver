@@ -22,12 +22,14 @@ def SIMPLE_convergence(residuals, label):
 
 def overall_convergence():
 
-    p_95_2 = ReadFile2(f"Results/20x20 after UR study/SIM 1/res_SIMPLE.txt")
-    p_95_4 = ReadFile2(f"Results/under_relax_study/SIM 2/res_SIMPLE.txt")
-    p_95_6 = ReadFile2(f"Results/under_relax_study/SIM 3/res_SIMPLE.txt")
-    p_90_4 = ReadFile2(f"Results/under_relax_study/SIM 4/res_SIMPLE.txt")
-    p_98_4 = ReadFile2(f"Results/under_relax_study/SIM 5/res_SIMPLE.txt")
-    p_98_6 = ReadFile2(f"Results/under_relax_study/SIM 6/res_SIMPLE.txt")
+    directory = "100x100 after UR study"
+
+    p_95_2 = ReadFile2(f"Results/{directory}/SIM 1/res_SIMPLE.txt")
+    p_95_4 = ReadFile2(f"Results/{directory}/SIM 2/res_SIMPLE.txt")
+    p_95_6 = ReadFile2(f"Results/{directory}/SIM 3/res_SIMPLE.txt")
+    p_90_4 = ReadFile2(f"Results/{directory}/SIM 4/res_SIMPLE.txt")
+    p_98_4 = ReadFile2(f"Results/{directory}/SIM 5/res_SIMPLE.txt")
+    p_98_6 = ReadFile2(f"Results/{directory}/SIM 6/res_SIMPLE.txt")
 
     SIMPLE_convergence(p_95_2, "Re=50, Upwind")
     SIMPLE_convergence(p_95_4, "Re=50, Centered")
