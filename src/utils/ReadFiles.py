@@ -43,8 +43,9 @@ class ReadFiles():
         tol_GS = simulation_sets['Gauss-Seidel']['tol']
         maxIts = simulation_sets['Gauss-Seidel']['maxIts']
         L = float(MESH_sets['x1']) - float(MESH_sets['x0'])
+        MeshFile = MESH_sets["MeshFile"]
         
-        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L
+        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile
 
     def ReadMesh(self, points_filename, faces_filename, cells_filename, owners_filename, neighbours_filename, boundary_filename):
 
