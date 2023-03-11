@@ -170,6 +170,8 @@ class SIMPLE(LinearSystem):
 
         """
 
+        F = F.copy()
+
         owner_neighbours = self.mesh.cell_owner_neighbour()
         face_centres = self.mesh.face_centres()
         cell_centres = self.mesh.cell_centres()
@@ -213,6 +215,9 @@ class SIMPLE(LinearSystem):
             u (np.array): corrected x velocity field
             v (np.array): corrected y velocity field
         """
+        u = u.copy()
+        v = v.copy()
+        z = z.copy()
 
         #delta_px, delta_py = self.cell_centre_pressure(p_field)
         delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
@@ -456,8 +461,8 @@ class SIMPLE(LinearSystem):
                 continue
             total_flux[neighbour] -= F[i]
 
-        return total_flux
-    
+        return total_flux.flatten()
+
     def residuals_combined(self, Ax, bx, Ay, by, u, v):
 
         """
@@ -495,7 +500,7 @@ class SIMPLE(LinearSystem):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, F, p, it, format="dense"):
+    def SIMPLE_loop(self, u, v, z, F, p, it, dim, format="dense"):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -517,13 +522,24 @@ class SIMPLE(LinearSystem):
             GS_res_y (float): final residual of y Gauss-seidel loop
         """
 
-        # pressure gradient
-        delta_px, delta_py, delta_pz = self.cell_pressure_backward(p)
+        #avoiding numpy behaviour
+        u = u.copy()
+        v = v.copy()
+        z = z.copy()
+        F = F.copy()
+        p = p.copy()
 
         # Momentum Predictor
         Ax, bx = self.momentum_disc(u, F, 1, format)
         Ay, by = self.momentum_disc(v, F, 0, format)
         Az, bz = self.momentum_disc(z, F, 0, format)
+
+        # get momentum coefficients for report
+        num_cells = self.mesh.num_cells()
+        internal_cell = dim*int(dim/2) + int(dim/2)
+        boundary_cell = num_cells - int(dim/2)
+        mom_mat_coeff = [Ax[internal_cell, internal_cell], Ax[boundary_cell, boundary_cell], 
+                         Ay[internal_cell, internal_cell], Ay[boundary_cell, boundary_cell]]
 
         uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200) #self.gauss_seidel(Ax, bx, u)
         vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200) #self.gauss_seidel(Ay, by, v)
@@ -547,11 +563,16 @@ class SIMPLE(LinearSystem):
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
+        # get pressure coefficients for report
+        pressure_mat_coeff = [Ap[internal_cell, internal_cell], Ap[boundary_cell, boundary_cell]]
+        mat_coeffs = [mom_mat_coeff, pressure_mat_coeff]
+
         # Face flux correction
         Fcorr = self.face_flux_correction(Fpre, raP, p_field)
-
         # total_flux for each cell check - uncomment if needed
-        total_flux = self.face_flux_check(Fcorr)
+        # if it+1 == 1:
+        #     print(Fpre.sum())
+        #     print(Fcorr.sum())
 
         # Explicit pressure under-relaxation
         p_field = p + self.alpha_p * (p_field - p)
@@ -559,11 +580,12 @@ class SIMPLE(LinearSystem):
         # Cell-centred correction
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
 
+        #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, Fcorr, p_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
+        return uplus1, vplus1, zplus1, Fcorr, p_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
     
-    def iterate(self, u, v, p, tol=1e-6, maxIts=100):
+    def iterate(self, u, v, p, dim, tol=1e-6, maxIts=100):
     
         """
         SIMPLE algorithm loop.
@@ -580,6 +602,12 @@ class SIMPLE(LinearSystem):
             p_field (np.array): final pressure field
             res_SIMPLE_ls (list): list of SIMPLE residuals
         """ 
+
+        # avoiding numpy behaviour
+        u = u.copy()
+        v = v.copy()
+        p = p.copy()
+
         # Initial flux to feed in
         z = np.zeros_like(v)
         F = self.face_flux(u, v, z)
@@ -589,18 +617,22 @@ class SIMPLE(LinearSystem):
         resx_momentum_ls = []
         resy_momentum_ls = []
         res_pressure_ls = []
+        mat_coeffs = []
+        its = 0
 
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, F, p, i, "dense")
+            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, F, p, i, dim, "dense")
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
             res_pressure_ls.append(res_pressure)
+            mat_coeffs.append(mat_coeff)
+            its += 1
             if (i+1 > 10):
                 if res_SIMPLE[0] < tol and res_SIMPLE[1] < tol:
                     print(f"Simulation converged in {i+1} iterations")
                     break
-        
-        return u, v, z, p, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls
+
+        return u, v, z, p, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, mat_coeffs, its
