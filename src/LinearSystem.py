@@ -50,9 +50,6 @@ class LinearSystem:
 
         for i in range(len(cell_owner_neighbour)):
 
-            # if face_area_vectors[i][2] != 0:
-            #     continue
-
             cell = cell_owner_neighbour[i][0]
             neighbour = cell_owner_neighbour[i][1]
             face_area_vector = face_area_vectors[i]
@@ -69,7 +66,6 @@ class LinearSystem:
                 if i in top_index:
                     b[cell] -= FN_cell * BC # CHECK THIS <-MAYBE
                     b[cell] += (self.viscosity * face_mag / d_mag) * BC
-
                 continue
 
             neighbour_centre = cell_centres[neighbour]

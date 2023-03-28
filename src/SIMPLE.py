@@ -541,9 +541,9 @@ class SIMPLE(LinearSystem):
         mom_mat_coeff = [Ax[internal_cell, internal_cell], Ax[boundary_cell, boundary_cell], 
                          Ay[internal_cell, internal_cell], Ay[boundary_cell, boundary_cell]]
 
-        uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200) #self.gauss_seidel(Ax, bx, u)
-        vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200) #self.gauss_seidel(Ay, by, v)
-        zplus1, exitcode = bicg(Az, bz, x0=z, maxiter=200)
+        uplus1 = self.gauss_seidel(Ax, bx, u)
+        vplus1 = self.gauss_seidel(Ay, by, v)
+        zplus1 = self.gauss_seidel(Az, bz, z)
 
         resx_momentum = [self.residual(Ax, bx, u), self.residual(Ax, bx, uplus1)]
         resy_momentum = [self.residual(Ay, by, v), self.residual(Ay, by, vplus1)]
