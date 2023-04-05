@@ -570,9 +570,6 @@ class SIMPLE(LinearSystem, TurbulenceSystem):
         k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
         Ae, be = self.e_disc(k, e, F, 0)
         e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
-        print(k_field == e_field)
-        print(k_field)
-        print(e_field)
 
         # get pressure coefficients for report
         pressure_mat_coeff = [Ap[internal_cell, internal_cell], Ap[boundary_cell, boundary_cell]]
