@@ -62,7 +62,7 @@ if __name__ == "__main__":
     SIM_num = 6
     ncells = 40
     d=0.1
-    SIM = "under_relax_study"
+    SIM = "test"
 
     u_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/u_field.txt")
     v_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/v_field.txt")

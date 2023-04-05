@@ -44,8 +44,14 @@ class ReadFiles():
         maxIts = simulation_sets['Gauss-Seidel']['maxIts']
         L = float(MESH_sets['x1']) - float(MESH_sets['x0'])
         MeshFile = MESH_sets["MeshFile"]
-        
-        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile
+        Cmu = simulation_sets["Turbulence"]["Cmu"]
+        C1 = simulation_sets["Turbulence"]["C1"]
+        C2 = simulation_sets["Turbulence"]["C2"]
+        C3 = simulation_sets["Turbulence"]["C3"]
+        sigmak = simulation_sets["Turbulence"]["sigmak"]
+        sigmaEps = simulation_sets["Turbulence"]["sigmaEps"]
+
+        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps
 
     def ReadMesh(self, points_filename, faces_filename, cells_filename, owners_filename, neighbours_filename, boundary_filename):
 

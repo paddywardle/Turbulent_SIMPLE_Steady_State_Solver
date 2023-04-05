@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-#from src.utils.InitialConds import ReadFile
 import os
 import argparse
 
-SIM = "folder"
+SIM = "test"
 
 def ReadFile(filename):
 
@@ -97,7 +96,6 @@ def pressure_convergence(residuals, SIM_num):
 def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
     
     quiver_step = 2
-    print(ncells, len(ux_field))
     ux_field = np.pad(np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0), (1,1))
     uy_field = np.pad(np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0), (1,1))
     uz_field = np.pad(np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0), (1,1))
@@ -151,7 +149,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb.ax.set_title("Z (m/s)")
         ax.set_title("Z Field")
         plt.savefig(f"Results/{SIM}/SIM {SIM_num}/z_field.png")
-    else:
+    elif filename == "p":
         field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
         fig, ax = plt.subplots()
         im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
@@ -159,6 +157,22 @@ def field(field, SIM_num, ncells, d, filename):
         clb.ax.set_title("P (Pa)")
         ax.set_title("Pressure field")
         plt.savefig(f"Results/{SIM}/SIM {SIM_num}/p_field.png")
+    elif filename == "k":
+        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        clb = fig.colorbar(im)
+        clb.ax.set_title("k")
+        ax.set_title("k field")
+        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/k_field.png")
+    elif filename == "e":
+        field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
+        fig, ax = plt.subplots()
+        im = ax.imshow(field, interpolation="spline16", extent=[0, d, 0, d], cmap="jet")
+        clb = fig.colorbar(im)
+        clb.ax.set_title("e")
+        ax.set_title("e field")
+        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/e_field.png")
 
     return ax
 
@@ -174,12 +188,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     SIM_num = args.SIM_num
-    ncells = 40
+    ncells = 20
 
     u_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/u_field.txt")
     v_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/v_field.txt")
     z_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/z_field.txt")
     p_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/p_field.txt")
+    k_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/k_field.txt")
+    e_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/e_field.txt")
     res_SIMPLE = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/res_SIMPLE.txt")
     resx_momentum = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/resx_momentum.txt")
     resy_momentum = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/resy_momentum.txt")
@@ -194,6 +210,10 @@ if __name__ == "__main__":
     v_ax = field(v_field, SIM_num, ncells, 0.1, "y")
     plt.close()
     z_ax = field(z_field, SIM_num, ncells, 0.1, "z")
+    plt.close()
+    k_ax = field(k_field, SIM_num, ncells, 0.1, "k")
+    plt.close()
+    e_ax = field(e_field, SIM_num, ncells, 0.1, "e")
     plt.close()
     SIMPLE_convergence(res_SIMPLE, SIM_num)
     plt.close()

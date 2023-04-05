@@ -24,7 +24,7 @@ class WriteFiles():
             for i in field:
                 f.write(str(i) + "\n")
 
-    def WriteResults(self, u_field, v_field, z_field, p_field, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, sim_time, mat_coeffs, resolution, iterations):
+    def WriteResults(self, u_field, v_field, z_field, p_field, k_field, e_field, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, sim_time, mat_coeffs, resolution, iterations):
 
         """
         Function to write out the velocity fields, pressure field and residuals
@@ -42,6 +42,8 @@ class WriteFiles():
         self.WriteFile("v_field", v_field)
         self.WriteFile("z_field", z_field)
         self.WriteFile("p_field", p_field)
+        self.WriteFile("k_field", k_field)
+        self.WriteFile("e_field", e_field)
         self.WriteFile("res_SIMPLE", res_SIMPLE_ls)
         self.WriteFile("resx_momentum", resx_momentum_ls)
         self.WriteFile("resy_momentum", resy_momentum_ls)

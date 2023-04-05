@@ -1,17 +1,19 @@
 import numpy as np
 from scipy.sparse.linalg import bicg
 from LinearSystem import LinearSystem
+from TurbulenceSystem import TurbulenceSystem
 import sys
 
-class SIMPLE(LinearSystem):
+class SIMPLE(LinearSystem, TurbulenceSystem):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
     """
 
-    def __init__(self, mesh, conv_scheme, viscosity, alpha_u, alpha_p):
+    def __init__(self, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
         
         LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
+        TurbulenceSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
@@ -500,7 +502,7 @@ class SIMPLE(LinearSystem):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, F, p, it, dim, format="dense"):
+    def SIMPLE_loop(self, u, v, z, p, k, e, F, it, dim):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -530,9 +532,9 @@ class SIMPLE(LinearSystem):
         p = p.copy()
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, 1, format)
-        Ay, by = self.momentum_disc(v, F, 0, format)
-        Az, bz = self.momentum_disc(z, F, 0, format)
+        Ax, bx = self.momentum_disc(u, F, 1)
+        Ay, by = self.momentum_disc(v, F, 0)
+        Az, bz = self.momentum_disc(z, F, 0)
 
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
@@ -541,9 +543,9 @@ class SIMPLE(LinearSystem):
         mom_mat_coeff = [Ax[internal_cell, internal_cell], Ax[boundary_cell, boundary_cell], 
                          Ay[internal_cell, internal_cell], Ay[boundary_cell, boundary_cell]]
 
-        uplus1 = self.gauss_seidel(Ax, bx, u)
-        vplus1 = self.gauss_seidel(Ay, by, v)
-        zplus1 = self.gauss_seidel(Az, bz, z)
+        uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200)
+        vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200)
+        zplus1, exitcode = bicg(Az, bz, x0=z, maxiter=200)
 
         resx_momentum = [self.residual(Ax, bx, u), self.residual(Ax, bx, uplus1)]
         resy_momentum = [self.residual(Ay, by, v), self.residual(Ay, by, vplus1)]
@@ -559,9 +561,18 @@ class SIMPLE(LinearSystem):
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz)
 
         # Pressure corrector
-        Ap, bp = self.pressure_laplacian(Fpre, raP, 0)
+        Ap, bp = self.pressure_disc(Fpre, raP, 0)
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
+
+        # turbulence systems
+        Ak, bk = self.k_disc(k, e, F, 0)
+        k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
+        Ae, be = self.e_disc(k, e, F, 0)
+        e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
+        print(k_field == e_field)
+        print(k_field)
+        print(e_field)
 
         # get pressure coefficients for report
         pressure_mat_coeff = [Ap[internal_cell, internal_cell], Ap[boundary_cell, boundary_cell]]
@@ -569,10 +580,6 @@ class SIMPLE(LinearSystem):
 
         # Face flux correction
         Fcorr = self.face_flux_correction(Fpre, raP, p_field)
-        # total_flux for each cell check - uncomment if needed
-        # if it+1 == 1:
-        #     print(Fpre.sum())
-        #     print(Fcorr.sum())
 
         # Explicit pressure under-relaxation
         p_field = p + self.alpha_p * (p_field - p)
@@ -583,9 +590,9 @@ class SIMPLE(LinearSystem):
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, Fcorr, p_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
+        return uplus1, vplus1, zplus1, Fcorr, p_field, k_field, e_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
     
-    def iterate(self, u, v, p, dim, tol=1e-6, maxIts=100):
+    def iterate(self, u, v, p, k, e, dim, tol=1e-6, maxIts=100):
     
         """
         SIMPLE algorithm loop.
@@ -623,7 +630,7 @@ class SIMPLE(LinearSystem):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, F, p, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, F, p, i, dim, "dense")
+            u, v, z, F, p, k, e, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, p, k, e, F, i, dim)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
@@ -635,4 +642,4 @@ class SIMPLE(LinearSystem):
                     print(f"Simulation converged in {i+1} iterations")
                     break
 
-        return u, v, z, p, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, mat_coeffs, its
+        return u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, mat_coeffs, its

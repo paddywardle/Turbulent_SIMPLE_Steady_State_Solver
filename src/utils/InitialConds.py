@@ -1,6 +1,10 @@
 import numpy as np
+from ReadFiles import ReadFiles
 
 def InitialConds():
+
+    read = ReadFiles()
+    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps = read.ReadSettings('config/config.json')
 
     with open("MeshFiles/20x20/cells.txt") as f:
         num_cells = len(f.readlines())
@@ -8,8 +12,8 @@ def InitialConds():
     u_field = np.zeros((num_cells, 1))
     v_field = np.zeros((num_cells, 1))
     p_field = np.zeros((num_cells, 1))
-    k_field = np.zeros((num_cells, 1))
-    e_field = np.zeros((num_cells, 1))
+    k_field = np.ones((num_cells, 1))
+    e_field = np.ones((num_cells, 1))
     
     WriteFile("InitialConds/20x20/u_field.txt", u_field)
     WriteFile("InitialConds/20x20/v_field.txt", v_field)

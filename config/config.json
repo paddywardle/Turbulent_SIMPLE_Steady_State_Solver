@@ -6,21 +6,28 @@
         "y1": 0.1,
         "z0": 0.0,
         "z1": 0.01,
-        "nxCells": 40,
-        "nyCells": 40,
-        "nzCells": 1
+        "MeshFile": "20x20"
     },
     "SIMULATION":{
-        "Re": 100,
-        "alpha_u": 0.95,
-        "alpha_p": 0.2,
+        "Re": 50,
+        "alpha_u": 0.98,
+        "alpha_p": 0.4,
         "SIMPLE":{
-            "tol": 1e-9,
-            "its": 10
+            "conv_scheme": "upwind",
+            "tol": 1e-6,
+            "its": 1                               
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
             "maxIts": 200
+        },
+        "Turbulence":{
+            "Cmu":0.09,
+            "C1": 1.44,
+            "C2": 1.92,
+            "C3": 0.0,
+            "sigmak": 1.0,
+            "sigmaEps": 1.3
         }
     }
 }
