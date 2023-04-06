@@ -16,15 +16,16 @@ class LinearSystem:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def momentum_mat(self, A, b, u, F, BC):
+    def momentum_mat(self, A, b, F, veff):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
-            u (np.array): current velocity field of the system
-            uface (np.array): current face velocities
-            it (int): current iteration counter
+            A (np.array): momentum matrix
+            b (np.array): momentum RHS
+            F (np.array): flux array
+            veff (np.array): effective viscosity array
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
@@ -77,24 +78,26 @@ class LinearSystem:
                 A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive diag contributions
-            A[cell, cell] += self.viscosity * face_mag / d_mag
-            A[neighbour, neighbour] += self.viscosity * face_mag / d_mag
+            A[cell, cell] += veff[cell] * face_mag / d_mag
+            A[neighbour, neighbour] += veff[cell] * face_mag / d_mag
 
             # diffusive off-diag contributions
-            A[cell, neighbour] -= self.viscosity * face_mag / d_mag
-            A[neighbour, cell] -= self.viscosity * face_mag / d_mag
+            A[cell, neighbour] -= veff[cell] * face_mag / d_mag
+            A[neighbour, cell] -= veff[cell] * face_mag / d_mag
 
         return A, b
     
-    def momentum_boundary_mat(self, A, b, u, F, BC):
+    def momentum_boundary_mat(self, A, b, F, veff, BC):
 
         """
         This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
-            u (np.array): current velocity field of the system
-            uface (np.array): current face velocities
-            it (int): current iteration counter
+            A (np.array): momentum matrix
+            b (np.array): momentum RHS
+            F (np.array): flux array
+            veff (np.array): effective viscosity array
+            BC (int): boundary condition
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
@@ -124,14 +127,26 @@ class LinearSystem:
 
                 FN_cell = F[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
-                A[cell, cell] += self.viscosity * face_mag / d_mag
+                A[cell, cell] += veff[cell] * face_mag / d_mag
                 if i in top_index:
                     b[cell] -= FN_cell * BC
-                    b[cell] += (self.viscosity * face_mag / d_mag) * BC
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC
         
         return A, b
     
     def momentum_UR(self, A, b, u):
+
+        """
+        This function under-relaxes the momentum system.
+
+        Args:
+            A (np.array): momentum matrix
+            b (np.array): momentum RHS
+            u (np.array): cell-centred velocity array
+        Returns:
+            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
+
+        """
 
         for i in range(len(A)):
             A[i, i] /= self.alpha_u
@@ -139,28 +154,43 @@ class LinearSystem:
 
         return A, b
     
-    def momentum_disc(self, u, F, BC):
+    def momentum_disc(self, u, F, veff, BC):
+
+        """
+        This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
+
+        Args:
+            u (np.array): cell-centred velocity array
+            F (np.array): flux array
+            veff (np.array): effective viscosity array
+            BC (int): boundary condition
+        Returns:
+            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
+
+        """
 
         N = len(self.mesh.cells)
 
         A = np.zeros((N, N))
         b = np.zeros((N, 1)).flatten()
 
-        A, b = self.momentum_mat(A, b, u, F, BC)
+        A, b = self.momentum_mat(A, b, F, veff)
 
-        A, b = self.momentum_boundary_mat(A, b, u, F, BC)
+        A, b = self.momentum_boundary_mat(A, b, F, veff, BC)
 
         A, b = self.momentum_UR(A, b, u) 
 
         return A, b
     
-    def pressure_mat(self, Ap, bp, F, raP, BC):
+    def pressure_mat(self, Ap, bp, F, raP):
 
         """
         This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
-            Fpre (np.array): face flux
+            Ap (np.array): pressure matrix
+            bp (np.array): pressure RHS
+            F (np.array): flux array
             raP (np.array): reciprocal of momentum diagonal coefficients
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
@@ -170,7 +200,6 @@ class LinearSystem:
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
 
         for i in range(len(cell_owner_neighbour)):
 
@@ -205,14 +234,15 @@ class LinearSystem:
 
         return Ap, bp
     
-    def pressure_boundary_mat(self, Ap, bp, F, raP, BC):
+    def pressure_boundary_mat(self, Ap, bp, F):
 
         """
         This function discretises the pressure laplacian boundaries to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
-            Fpre (np.array): face flux
-            raP (np.array): reciprocal of momentum diagonal coefficients
+            Ap (np.array): pressure matrix
+            bp (np.array): pressure RHS
+            F (np.array): flux array
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
@@ -228,14 +258,26 @@ class LinearSystem:
     
     def pressure_disc(self, F, raP, BC):
 
+        """
+        This function discretises the pressure laplacia nto get the diagonal, off-diagonal and source contributions to the linear system.
+
+        Args:
+            F (np.array): flux array
+            raP (np.array): reciprocal of momentum diagonal coefficients
+            BC (int): boundary conditions
+        Returns:
+            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
+
+        """
+
         N = len(self.mesh.cells)
 
         Ap = np.zeros((N, N))
         bp = np.zeros((N, 1)).flatten()
 
-        Ap, bp = self.pressure_mat(Ap, bp, F, raP, BC)
+        Ap, bp = self.pressure_mat(Ap, bp, F, raP)
 
-        Ap, bp = self.pressure_boundary_mat(Ap, bp, F, raP, BC)    
+        Ap, bp = self.pressure_boundary_mat(Ap, bp, F)    
 
         return Ap, bp
 
