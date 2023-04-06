@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.sparse.linalg import bicg
 from LinearSystem import LinearSystem
-from TurbulenceSystem import TurbulenceSystem
+from TurbulenceModel import TurbulenceModel
 import sys
 
-class SIMPLE(LinearSystem, TurbulenceSystem):
+class SIMPLE(LinearSystem, TurbulenceModel):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
@@ -13,7 +13,7 @@ class SIMPLE(LinearSystem, TurbulenceSystem):
     def __init__(self, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
         
         LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
-        TurbulenceSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
+        TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
@@ -565,12 +565,6 @@ class SIMPLE(LinearSystem, TurbulenceSystem):
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
-        # turbulence systems
-        Ak, bk = self.k_disc(k, e, F, 0)
-        k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
-        Ae, be = self.e_disc(k, e, F, 0)
-        e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
-
         # get pressure coefficients for report
         pressure_mat_coeff = [Ap[internal_cell, internal_cell], Ap[boundary_cell, boundary_cell]]
         mat_coeffs = [mom_mat_coeff, pressure_mat_coeff]
@@ -583,6 +577,12 @@ class SIMPLE(LinearSystem, TurbulenceSystem):
 
         # Cell-centred correction
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
+
+        # turbulence systems
+        Ak, bk = self.k_disc(k, e, F, 0)
+        k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
+        Ae, be = self.e_disc(k, e, F, 0)
+        e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
 
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
