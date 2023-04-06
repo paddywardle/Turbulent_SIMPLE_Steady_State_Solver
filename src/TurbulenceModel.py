@@ -3,7 +3,7 @@ from SparseMatrixCR import SparseMatrixCR
 import numpy as np
 from scipy import sparse
 
-class TurbulenceSystem:
+class TurbulenceModel:
 
     """
     Class to discretise the k-e turbulence model equations to produce a linear system, using a finite volume discretisation approach.
@@ -302,5 +302,6 @@ class TurbulenceSystem:
 
         A, b = self.e_boundary_mat(A, b, F, veffEps, BC)
 
-        A, b = self.ke_UR(A, b, e) 
+        A, b = self.ke_UR(A, b, e)
+        
         return A, b
