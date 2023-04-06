@@ -22,15 +22,19 @@ class TurbulenceModel:
         self.sigmak = sigmak
         self.sigmaEps = sigmaEps
 
-    def effective_visc(self, k_arr, e_arr, sigma):
+    def TurbulentVisc(self, k_arr, e_arr):
 
-        veff = np.zeros((len(self.mesh.cells),))
+        vt = np.zeros((len(self.mesh.cells),))
 
         for i, (k, e) in enumerate(zip(k_arr, e_arr)):
 
-            vt = self.Cmu * ((k**2)/e)
+            vt[i] = self.Cmu * ((k**2)/e)
 
-            veff[i] = self.viscosity + vt / sigma
+        return vt.flatten()
+
+    def EffectiveVisc(self, k_arr, e_arr, sigma):
+
+        veff = self.viscosity + self.TurbulentVisc(k_arr, e_arr) / sigma
 
         return veff.flatten()
 
@@ -279,7 +283,7 @@ class TurbulenceModel:
         A = np.zeros((N, N))
         b = np.zeros((N, 1)).flatten()
 
-        veffk = self.effective_visc(k, e, self.sigmak)
+        veffk = self.EffectiveVisc(k, e, self.sigmak)
 
         A, b = self.k_mat(A, b, F, veffk, BC)
 
@@ -296,7 +300,7 @@ class TurbulenceModel:
         A = np.zeros((N, N))
         b = np.zeros((N, 1)).flatten()
 
-        veffEps = self.effective_visc(k, e, self.sigmaEps)
+        veffEps = self.EffectiveVisc(k, e, self.sigmaEps)
 
         A, b = self.e_mat(A, b, F, veffEps, BC)
 
