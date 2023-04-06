@@ -502,7 +502,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, p, k, e, F, it, dim):
+    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F, dim):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -510,15 +510,21 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         Args:
             u (np.array): x velocity field
             v (np.array): y velocity field
-            F (np.array): face flux field
+            z (np.array): z velocity field
             p (np.array): pressure field
-            it (int): iteration number
+            k (np.array): turbulence kinetic energy field
+            e (np.array): turbulence kinetic energy dissipation field
+            veff (np.array): effective viscosity field
+            F (np.array): face flux field
             format (string): matrix format
         Returns:
             u (np.array): corrected cell-centred x velocity field
             v (np.array): corrected cell-centred y velocity field
-            Fcorr (np.array): corrected face flux field
             p_field (np.array): updated pressure field
+            k (np.array): updated turbulence kinetic energy field
+            e (np.array): updated turbulence kinetic energy dissipation field
+            veff (np.array): updated effective viscosity field
+            Fcorr (np.array): corrected face flux field
             SIMPLE_res (float): resiudal of SIMPLE loop
             GS_res_x (float): final residual of x Gauss-seidel loop
             GS_res_y (float): final residual of y Gauss-seidel loop
@@ -532,9 +538,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         p = p.copy()
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, 1)
-        Ay, by = self.momentum_disc(v, F, 0)
-        Az, bz = self.momentum_disc(z, F, 0)
+        Ax, bx = self.momentum_disc(u, F, veff, 1)
+        Ay, by = self.momentum_disc(v, F, veff, 0)
+        Az, bz = self.momentum_disc(z, F, veff, 0)
 
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
@@ -584,10 +590,13 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         Ae, be = self.e_disc(k, e, F, 0)
         e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
 
+        # recalculating turbulent parameters
+        veff = self.EffectiveVisc(k, e, 1)
+
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, Fcorr, p_field, k_field, e_field, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
+        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
     
     def iterate(self, u, v, p, k, e, dim, tol=1e-6, maxIts=100):
     
@@ -598,12 +607,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             u (np.array): x velocity field
             v (np.array): y velocity field
             p (np.array): pressure field
+            k (np.array): turbulence kinetic energy field
+            e (np.array): turbulence kinetic energy dissipation field
             tol (float): algorithm tolerance
             maxIts (int): maximum number of iterations
         Returns:
             u (np.array): final cell-centred x velocity field
             v (np.array): final cell-centred y velocity field
             p_field (np.array): final pressure field
+            k (np.array): final turbulence kinetic energy field
+            e (np.array): final turbulence kinetic energy dissipation field
             res_SIMPLE_ls (list): list of SIMPLE residuals
         """ 
 
@@ -624,10 +637,12 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         mat_coeffs = []
         its = 0
 
+        veff = self.EffectiveVisc(k, e, 1)
+
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, F, p, k, e, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, p, k, e, F, i, dim)
+            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, p, k, e, veff, F, dim)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
