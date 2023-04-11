@@ -4,8 +4,6 @@ import seaborn as sns
 import os
 import argparse
 
-SIM = "test"
-
 def ReadFile(filename):
 
     data = []
@@ -41,7 +39,7 @@ def SIMPLE_convergence(residuals, SIM_num):
     plt.xlabel("SIMPLE Iteration")
     plt.ylabel("Residual")
     plt.title("SIMPLE Outer Loop Convergence")
-    plt.savefig(f"Results/{SIM}/SIM {SIM_num}/SIMPLE_conv_curve.png")
+    plt.savefig(f"Results/SIM {SIM_num}/SIMPLE_conv_curve.png")
 
 def momentum_convergence(residuals_x, residuals_y, SIM_num):
 
@@ -63,7 +61,7 @@ def momentum_convergence(residuals_x, residuals_y, SIM_num):
     plt.xlabel("SIMPLE Iteration")
     plt.ylabel("Residual")
     plt.title("U Inner Loop Convergence")
-    plt.savefig(f"Results/{SIM}/SIM {SIM_num}/u_inner_loop_conv.png")
+    plt.savefig(f"Results/SIM {SIM_num}/u_inner_loop_conv.png")
     plt.close()
 
     plt.plot(range(len(initial_y)), initial_y, label="Initial Residuals")
@@ -72,7 +70,7 @@ def momentum_convergence(residuals_x, residuals_y, SIM_num):
     plt.xlabel("SIMPLE Iteration")
     plt.ylabel("Residual")
     plt.title("V Inner Loop Convergence")
-    plt.savefig(f"Results/{SIM}/SIM {SIM_num}/v_inner_loop_conv.png")
+    plt.savefig(f"Results/SIM {SIM_num}/v_inner_loop_conv.png")
     plt.close()
 
 def pressure_convergence(residuals, SIM_num):
@@ -90,15 +88,18 @@ def pressure_convergence(residuals, SIM_num):
     plt.xlabel("SIMPLE Iteration")
     plt.ylabel("Residual")
     plt.title("Pressure Inner Loop Convergence")
-    plt.savefig(f"Results/{SIM}/SIM {SIM_num}/p_inner_loop_conv.png")
+    plt.savefig(f"Results/SIM {SIM_num}/p_inner_loop_conv.png")
     plt.close()
 
 def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
     
     quiver_step = 2
-    ux_field = np.pad(np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0), (1,1))
-    uy_field = np.pad(np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0), (1,1))
-    uz_field = np.pad(np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0), (1,1))
+    # ux_field = np.pad(np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0), (1,1))
+    # uy_field = np.pad(np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0), (1,1))
+    # uz_field = np.pad(np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0), (1,1))
+    ux_field = np.flip(np.reshape(ux_field, (ncells, ncells)), axis=0)
+    uy_field = np.flip(np.reshape(uy_field, (ncells, ncells)), axis=0)
+    uz_field = np.flip(np.reshape(uz_field, (ncells, ncells)), axis=0)
     x, y = np.meshgrid(np.linspace(0, ux_field.shape[0], ux_field.shape[1]), np.linspace(0, ux_field.shape[1], ux_field.shape[0]))
 
     # setting moving wall
@@ -119,7 +120,7 @@ def velocity_field_plot(ux_field, uy_field, uz_field, SIM_num, ncells, d):
     clb = fig.colorbar(im)
     clb.ax.set_title("m/s")
     ax.set_title("Velocity Field")
-    plt.savefig(f"Results/{SIM}/SIM {SIM_num}/velocity_field.png")
+    plt.savefig(f"Results/SIM {SIM_num}/velocity_field.png")
     return ax
 
 def field(field, SIM_num, ncells, d, filename):
@@ -132,7 +133,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("U (m/s)")
         ax.set_title("U Field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/u_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/u_field.png")
     elif filename == "y":
         field = np.flip(np.reshape(field, (ncells, ncells)), axis=0)
         fig, ax = plt.subplots()
@@ -140,7 +141,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("V (m/s)")
         ax.set_title("V Field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/v_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/v_field.png")
     elif filename == "z":
         field = np.pad(np.flip(np.reshape(field, (ncells, ncells)), axis=0), (1,1))
         fig, ax = plt.subplots()
@@ -148,7 +149,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("Z (m/s)")
         ax.set_title("Z Field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/z_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/z_field.png")
     elif filename == "p":
         field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
         fig, ax = plt.subplots()
@@ -156,7 +157,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("P (Pa)")
         ax.set_title("Pressure field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/p_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/p_field.png")
     elif filename == "k":
         field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
         fig, ax = plt.subplots()
@@ -164,7 +165,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("k")
         ax.set_title("k field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/k_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/k_field.png")
     elif filename == "e":
         field = np.flip(np.reshape(field, (ncells, ncells)), axis=0) * 1000
         fig, ax = plt.subplots()
@@ -172,7 +173,7 @@ def field(field, SIM_num, ncells, d, filename):
         clb = fig.colorbar(im)
         clb.ax.set_title("e")
         ax.set_title("e field")
-        plt.savefig(f"Results/{SIM}/SIM {SIM_num}/e_field.png")
+        plt.savefig(f"Results/SIM {SIM_num}/e_field.png")
 
     return ax
 
@@ -190,16 +191,16 @@ if __name__ == "__main__":
     SIM_num = args.SIM_num
     ncells = 20
 
-    u_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/u_field.txt")
-    v_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/v_field.txt")
-    z_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/z_field.txt")
-    p_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/p_field.txt")
-    k_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/k_field.txt")
-    e_field = ReadFile(f"Results/{SIM}/SIM {SIM_num}/e_field.txt")
-    res_SIMPLE = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/res_SIMPLE.txt")
-    resx_momentum = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/resx_momentum.txt")
-    resy_momentum = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/resy_momentum.txt")
-    res_pressure = ReadFile2(f"Results/{SIM}/SIM {SIM_num}/res_pressure.txt")
+    u_field = ReadFile(f"Results/SIM {SIM_num}/u_field.txt")
+    v_field = ReadFile(f"Results/SIM {SIM_num}/v_field.txt")
+    z_field = ReadFile(f"Results/SIM {SIM_num}/z_field.txt")
+    p_field = ReadFile(f"Results/SIM {SIM_num}/p_field.txt")
+    k_field = ReadFile(f"Results/SIM {SIM_num}/k_field.txt")
+    e_field = ReadFile(f"Results/SIM {SIM_num}/e_field.txt")
+    res_SIMPLE = ReadFile2(f"Results/SIM {SIM_num}/res_SIMPLE.txt")
+    resx_momentum = ReadFile2(f"Results/SIM {SIM_num}/resx_momentum.txt")
+    resy_momentum = ReadFile2(f"Results/SIM {SIM_num}/resy_momentum.txt")
+    res_pressure = ReadFile2(f"Results/SIM {SIM_num}/res_pressure.txt")
 
     velocity_ax = velocity_field_plot(u_field, v_field, z_field, SIM_num, ncells, 0.1)
     plt.close()
