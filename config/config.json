@@ -9,20 +9,20 @@
         "MeshFile": "20x20"
     },
     "SIMULATION":{
-        "Re": 50,
+        "Re": 4000,
         "alpha_u": 0.98,
         "alpha_p": 0.4,
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 1e-6,
-            "its": 1                               
+            "its": 10                               
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
             "maxIts": 200
         },
         "Turbulence":{
-            "Cmu":0.09,
+            "Cmu": 0.09,
             "C1": 1.44,
             "C2": 1.92,
             "C3": 0.0,
