@@ -8,6 +8,7 @@ class MeshParser:
         self.faces = self.Faces()
         self.points = self.Points()
         self.owners, self.neighbours = self.OwnerNeighbours()
+        self.cells = self.Cells()
         self.boundaries = self.Boundaries()
 
     def OwnerNeighbours(self):
@@ -59,6 +60,20 @@ class MeshParser:
 
         return faces
     
+    def Cells(self):
+
+        num_cells = max(self.owners)
+        cells = [[] for i in range(num_cells+1)]
+
+        for i in range(len(self.owners)):
+            cells[self.owners[i]].append(i)
+        
+        for i in range(len(self.neighbours)):
+            neighbour = self.neighbours[i]
+            cells[neighbour].append(i)
+
+        return cells
+
     def Boundaries(self):
         
         boundaries = {}
@@ -77,4 +92,4 @@ class MeshParser:
 if __name__ == "__main__":
 
     mp = MeshParser("MeshFiles/backward_step")
-    print(mp.owners)
+    print(mp.Cells()[0:10])
