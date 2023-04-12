@@ -3,7 +3,7 @@ import numpy as np
 class TurbulenceModelBCs:
 
     """
-    Class to discretise the k-e turbulence model equations to produce a linear system, using a finite volume discretisation approach.
+    Class to discretise the k-e turbulence model equations to produce a linear system for the boundaries, using a finite volume discretisation approach.
     """
 
     def __init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps):
