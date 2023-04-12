@@ -88,8 +88,3 @@ class MeshParser:
                     boundaries[patches[i-1].strip()] = list(range(startFace, startFace+nfaces))
 
         return boundaries
-
-if __name__ == "__main__":
-
-    mp = MeshParser("MeshFiles/backward_step")
-    print(mp.Cells()[0:10])
