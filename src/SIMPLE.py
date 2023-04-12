@@ -109,8 +109,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         delta_p_face = np.zeros((self.mesh.num_faces(), 1))
         owner_neighbour = self.mesh.cell_owner_neighbour()
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
 
         # loops through owner neighbour pairs
         for i in range(len(owner_neighbour)):
@@ -175,7 +173,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         F = F.copy()
 
         owner_neighbours = self.mesh.cell_owner_neighbour()
-        face_centres = self.mesh.face_centres()
         cell_centres = self.mesh.cell_centres()
         face_area_vectors = self.mesh.face_area_vectors()
         delta_p_face = self.face_pressure(p_field)
@@ -190,7 +187,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             # nothing happens at boundary due to 0 gradient boundary conditions
             if neighbour == -1:
                 # zero gradient boundary condition
-                F[i] -= 0#aPN * delta_p_face[i]
+                F[i] -= 0
                 continue
             
             d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
@@ -224,11 +221,14 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         #delta_px, delta_py = self.cell_centre_pressure(p_field)
         delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
 
+        # cell volumes
+        cell_vols = self.mesh.cell_volumes()
+
         for cell in range(self.mesh.num_cells()):
 
-            u[cell] -= delta_px[cell] * raP[cell]
-            v[cell] -= delta_py[cell] * raP[cell]
-            z[cell] -= delta_pz[cell] * raP[cell]
+            u[cell] -= delta_px[cell] * raP[cell]# * cell_vols[cell]
+            v[cell] -= delta_py[cell] * raP[cell]# * cell_vols[cell]
+            z[cell] -= delta_pz[cell] * raP[cell]# * cell_vols[cell]
 
         return u, v, z
 
@@ -241,14 +241,12 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_pz = np.zeros_like(p_field)
         owner_neighbour = self.mesh.cell_owner_neighbour()
         d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
-        face_mag = 0
 
         for i, owner_neighbour in enumerate(owner_neighbour):
 
             owner = owner_neighbour[0]
             neighbour = owner_neighbour[1]
             sf = face_area_vectors[i]
-            face_mag = np.linalg.norm(sf)
 
             if neighbour == -1:
                 # zero gradient boundary
@@ -274,14 +272,12 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_pz = np.zeros_like(p_field)
         owner_neighbour = self.mesh.cell_owner_neighbour()
         d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
-        face_mag = 0
 
         for i, owner_neighbour in enumerate(owner_neighbour):
 
             owner = owner_neighbour[0]
             neighbour = owner_neighbour[1]
             sf = face_area_vectors[i]
-            face_mag = np.linalg.norm(sf)
 
             if neighbour == -1:
                 # zero gradient boundary
@@ -305,14 +301,12 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_pz = np.zeros_like(p_field)
         owner_neighbour = self.mesh.cell_owner_neighbour()
         d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
-        face_mag = 0
 
         for i, owner_neighbour in enumerate(owner_neighbour):
 
             owner = owner_neighbour[0]
             neighbour = owner_neighbour[1]
             sf = face_area_vectors[i]
-            face_mag = np.linalg.norm(sf)
 
             if neighbour == -1:
                 # zero gradient boundary
