@@ -496,7 +496,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F, dim):
+    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -538,10 +538,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
-        internal_cell = dim*int(dim/2) + int(dim/2)
-        boundary_cell = num_cells - int(dim/2)
-        mom_mat_coeff = [Ax[internal_cell, internal_cell], Ax[boundary_cell, boundary_cell], 
-                         Ay[internal_cell, internal_cell], Ay[boundary_cell, boundary_cell]]
 
         uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200)
         vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200)
@@ -565,10 +561,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
-        # get pressure coefficients for report
-        pressure_mat_coeff = [Ap[internal_cell, internal_cell], Ap[boundary_cell, boundary_cell]]
-        mat_coeffs = [mom_mat_coeff, pressure_mat_coeff]
-
         # Face flux correction
         Fcorr = self.face_flux_correction(Fpre, raP, p_field)
 
@@ -590,9 +582,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeffs
+        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
-    def iterate(self, u, v, p, k, e, dim, tol=1e-6, maxIts=100):
+    def iterate(self, u, v, p, k, e, tol=1e-6, maxIts=100):
     
         """
         SIMPLE algorithm loop.
@@ -628,7 +620,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         resx_momentum_ls = []
         resy_momentum_ls = []
         res_pressure_ls = []
-        mat_coeffs = []
         its = 0
 
         veff = self.EffectiveVisc(k, e, 1)
@@ -636,16 +627,15 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure, mat_coeff = self.SIMPLE_loop(u, v, z, p, k, e, veff, F, dim)
+            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, p, k, e, veff, F)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
             res_pressure_ls.append(res_pressure)
-            mat_coeffs.append(mat_coeff)
             its += 1
             if (i+1 > 10):
                 if res_SIMPLE[0] < tol and res_SIMPLE[1] < tol:
                     print(f"Simulation converged in {i+1} iterations")
                     break
 
-        return u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, mat_coeffs, its
+        return u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, its
