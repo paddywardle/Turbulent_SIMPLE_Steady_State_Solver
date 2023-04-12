@@ -52,50 +52,6 @@ class ReadFiles():
         sigmaEps = simulation_sets["Turbulence"]["sigmaEps"]
 
         return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps
-
-    def ReadMesh(self, points_filename, faces_filename, cells_filename, owners_filename, neighbours_filename, boundary_filename):
-
-        """
-        Function to read different mesh files
-
-        Args:
-            points_filename (string): filename of the points file
-            faces_filename (string): filename of the string file
-            cells_filename (string): filename of the cells file
-            boundary_filename (string): filename of the boundary patches file
-        """
-
-        # call read_file function for each mesh characteristic and return arrays
-        points = np.asarray(self.ReadMeshFile(points_filename, boundary_filename))
-        faces = np.asarray(self.ReadMeshFile(faces_filename, boundary_filename), dtype=int)
-        cells = np.asarray(self.ReadMeshFile(cells_filename, boundary_filename), dtype=int)
-        owners = np.asarray(self.ReadMeshFile(owners_filename, boundary_filename), dtype=int)
-        neighbours = np.asarray(self.ReadMeshFile(neighbours_filename, boundary_filename), dtype=int)
-        boundary = np.asarray(self.ReadMeshFile(boundary_filename, boundary_filename), dtype=object)
-
-        return points, faces, cells, owners, neighbours, boundary
-
-    def ReadMeshFile(self, filename, boundary_filename):
-
-        """
-        Function to read mesh single file
-
-        Args:
-            filename (string): name of file to be read
-        """
-
-        array = []
-
-        # read each file for the mesh, appropriately format and return array of mesh characteristic
-        with open("MeshFiles/" + filename, 'r') as f:
-            for line in f.readlines():
-                line = line.strip()
-                ls = line.strip('()').split()
-                if filename != boundary_filename:
-                    ls = [float(i) for i in ls]
-                array.append(ls)
-
-        return array
     
     def ReadInitialConds(self, filename):
 
