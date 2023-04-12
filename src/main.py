@@ -1,8 +1,10 @@
 from Mesh import Mesh
-import numpy as np
+from SIMPLE import SIMPLE
 from utils.ReadFiles import ReadFiles
 from utils.WriteFiles import WriteFiles
-from SIMPLE import SIMPLE
+from utils.MeshParser import MeshParser
+
+import numpy as np
 import time
 import argparse
 
