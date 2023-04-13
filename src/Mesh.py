@@ -6,7 +6,7 @@ class Mesh(MeshParser):
 
     def __init__(self, mesh_directory):
 
-        MeshParser.__init__(mesh_directory)
+        MeshParser.__init__(self, mesh_directory)
 
     def __repr__(self):
 
@@ -257,7 +257,6 @@ class Mesh(MeshParser):
         for boundary_patch in self.boundary_patches:
             per_patch = []
             # skipping patch types (testing for values that are strings)
-            print(boundary_patch[0].isdigit())
             if not boundary_patch[0].isdigit():
                 continue
             # looping through faces in boundary patches
