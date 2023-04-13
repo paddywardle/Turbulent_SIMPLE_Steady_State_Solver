@@ -36,15 +36,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
-        top_index = []
-
-        # gets movingWall faces from boundary_patches file
-        for i in range(len(self.mesh.boundary_patches)):
-            if self.mesh.boundary_patches[i][0] == "movingWall":
-                top_index = self.mesh.boundary_patches[i+1]
-
-        top_index = [int(i) for i in top_index]
-
         # loops through owner neighbour pairs
         # applies boundary condition if neighbour = -1
         # linearly interpolates velocity onto the face otherwise
@@ -54,8 +45,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             neighbour = owner_neighbours[i][1]
             
             if (neighbour == -1):
-                if (i in top_index):
-                    uface[i] = BC
+                if i in self.mesh.boundaries['inlet']:
+                    uface[i] = BC['inlet'][0]
+                elif i in self.mesh.boundaries['outlet']:
+                    uface[i] = BC['outlet'][0]
+                elif i in self.mesh.boundaries['upperWall']:
+                    uface[i] = BC['upperWall'][0]
+                elif i in self.mesh.boundaries['lowerWall']:
+                    uface[i] = BC['lowerWall'][0]
+                else:
+                    uface[i] = BC['frontAndBack'][0]
             else:
                 PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
                 PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
@@ -63,7 +62,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return uface
     
-    def face_flux(self, u, v, z):
+    def face_flux(self, u, v, z, BC):
 
         """
         Function to calculate face flux
@@ -79,9 +78,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         F = []
 
-        uface = self.face_velocity(u, 1)
-        vface = self.face_velocity(v, 0)
-        zface = self.face_velocity(z, 0)
+        uface = self.face_velocity(u, BC)
+        vface = self.face_velocity(v, BC)
+        zface = self.face_velocity(z, BC)
         face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
         
         # horizontally stack x, y and z face velocity values
@@ -496,7 +495,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F):
+    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F, BC):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -510,7 +509,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             e (np.array): turbulence kinetic energy dissipation field
             veff (np.array): effective viscosity field
             F (np.array): face flux field
-            format (string): matrix format
+            BC (dict): boundary conditions
         Returns:
             u (np.array): corrected cell-centred x velocity field
             v (np.array): corrected cell-centred y velocity field
@@ -532,9 +531,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         p = p.copy()
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, veff, 1)
-        Ay, by = self.momentum_disc(v, F, veff, 0)
-        Az, bz = self.momentum_disc(z, F, veff, 0)
+        Ax, bx = self.momentum_disc(u, F, veff, 'u', BC)
+        Ay, by = self.momentum_disc(v, F, veff, 'v', BC)
+        Az, bz = self.momentum_disc(z, F, veff, 'w', BC)
 
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
@@ -554,10 +553,10 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         HbyAy = self.HbyA(Ay, by, vplus1, raP) # v velocity
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
-        Fpre = self.face_flux(HbyAx, HbyAy, HbyAz)
+        Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
 
         # Pressure corrector
-        Ap, bp = self.pressure_disc(Fpre, raP, 0)
+        Ap, bp = self.pressure_disc(Fpre, raP, BC)
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
@@ -571,9 +570,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
 
         # turbulence systems
-        Ak, bk = self.k_disc(k, e, F, 0)
+        Ak, bk = self.k_disc(k, e, F, BC)
         k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
-        Ae, be = self.e_disc(k, e, F, 0)
+        Ae, be = self.e_disc(k, e, F, BC)
         e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
 
         # recalculating turbulent parameters
@@ -584,7 +583,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
-    def iterate(self, u, v, p, k, e, tol=1e-6, maxIts=100):
+    def iterate(self, u, v, p, k, e, BC, tol=1e-6, maxIts=100):
     
         """
         SIMPLE algorithm loop.
@@ -595,6 +594,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             p (np.array): pressure field
             k (np.array): turbulence kinetic energy field
             e (np.array): turbulence kinetic energy dissipation field
+            BC (dict): boundary conditions
             tol (float): algorithm tolerance
             maxIts (int): maximum number of iterations
         Returns:
@@ -613,7 +613,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # Initial flux to feed in
         z = np.zeros_like(v)
-        F = self.face_flux(u, v, z)
+        F = self.face_flux(u, v, z, BC)
 
         # Lists to store residuals
         res_SIMPLE_ls = []
@@ -627,7 +627,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, p, k, e, veff, F)
+            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, p, k, e, veff, F, BC)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
@@ -638,4 +638,4 @@ class SIMPLE(LinearSystem, TurbulenceModel):
                     print(f"Simulation converged in {i+1} iterations")
                     break
 
-        return u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, its
+        return u, v, z, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, its
