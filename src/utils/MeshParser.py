@@ -58,21 +58,20 @@ class MeshParser:
                 line = list(map(float, line))
                 faces.append(line)
 
-        return faces
+        return np.array(faces)
     
     def Cells(self):
 
         num_cells = max(self.owners)
         cells = [[] for i in range(num_cells+1)]
 
-        for i in range(len(self.owners)):
-            cells[self.owners[i]].append(i)
-        
-        for i in range(len(self.neighbours)):
-            neighbour = self.neighbours[i]
+        for i, (owner, neighbour) in enumerate(zip(self.owners, self.neighbours)):
+            cells[owner].append(i)
+            if neighbour == -1:
+                continue
             cells[neighbour].append(i)
 
-        return cells
+        return np.array(cells)
 
     def Boundaries(self):
         
@@ -88,3 +87,9 @@ class MeshParser:
                     boundaries[patches[i-1].strip()] = list(range(startFace, startFace+nfaces))
 
         return boundaries
+
+if __name__ == "__main__":
+
+    mp = MeshParser("MeshFiles/backward_step")
+    points = [0,1,41,42,2091,2092,2132,2133]
+    print(mp.Points()[[2, 5]])
