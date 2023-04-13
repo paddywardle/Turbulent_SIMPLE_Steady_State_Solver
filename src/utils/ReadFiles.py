@@ -50,8 +50,10 @@ class ReadFiles():
         C3 = simulation_sets["Turbulence"]["C3"]
         sigmak = simulation_sets["Turbulence"]["sigmak"]
         sigmaEps = simulation_sets["Turbulence"]["sigmaEps"]
+        BC = simulation_sets["Boundaries"]
+        BCTypes = simulation_sets["BoundaryTypes"]
 
-        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps
+        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, [BC, BCTypes]
     
     def ReadInitialConds(self, filename):
 
