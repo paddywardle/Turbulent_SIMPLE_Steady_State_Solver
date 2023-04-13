@@ -105,7 +105,7 @@ class LinearSystem(LinearSystemBCs):
 
         return A, b
     
-    def momentum_disc(self, u, F, veff, BC):
+    def momentum_disc(self, u, F, veff, vel_comp, BC):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -127,7 +127,7 @@ class LinearSystem(LinearSystemBCs):
 
         A, b = self.momentum_mat(A, b, F, veff)
 
-        A, b = self.momentum_boundary_mat(A, b, F, veff, BC)
+        A, b = self.momentum_boundary_mat(A, b, F, veff, vel_comp, BC)
 
         A, b = self.momentum_UR(A, b, u) 
 
@@ -206,7 +206,7 @@ class LinearSystem(LinearSystemBCs):
 
         Ap, bp = self.pressure_mat(Ap, bp, F, raP)
 
-        Ap, bp = self.pressure_boundary_mat(Ap, bp, F)    
+        Ap, bp = self.pressure_boundary_mat(Ap, bp, F, raP, BC)    
 
         return Ap, bp
 
