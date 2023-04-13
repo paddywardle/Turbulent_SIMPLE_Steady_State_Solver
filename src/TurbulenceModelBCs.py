@@ -35,14 +35,6 @@ class TurbulenceModelBCs:
 
         """
 
-        top_index = []
-
-        for i in range(len(self.mesh.boundary_patches)):
-            if self.mesh.boundary_patches[i][0] == "movingWall":
-                top_index = self.mesh.boundary_patches[i+1]
-
-        top_index = [int(i) for i in top_index]
-
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -59,10 +51,29 @@ class TurbulenceModelBCs:
 
                 FN_cell = F[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
-                A[cell, cell] += veff[cell] * face_mag / d_mag
-                if i in top_index:
-                    b[cell] -= FN_cell * BC
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC
+
+                if i in self.mesh.boundaries['inlet']:
+                    k = (3/2) * BC['inlet'][4] * BC['inlet'][0]**2
+                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    b[cell] -= FN_cell * k
+                    b[cell] += (veff[cell] * face_mag / d_mag) * k
+                elif i in self.mesh.boundaries['outlet']:
+                    # need to alter as it would be neumann <- CHECK THESE
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][4]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][4]
+                elif i in self.mesh.boundaries['upperWall']:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][4]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][4]
+                elif i in self.mesh.boundaries['lowerWall']:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][4]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][4]
+                else:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][4]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][4]
         
         return A, b
 
@@ -82,14 +93,6 @@ class TurbulenceModelBCs:
 
         """
 
-        top_index = []
-
-        for i in range(len(self.mesh.boundary_patches)):
-            if self.mesh.boundary_patches[i][0] == "movingWall":
-                top_index = self.mesh.boundary_patches[i+1]
-
-        top_index = [int(i) for i in top_index]
-
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -106,9 +109,29 @@ class TurbulenceModelBCs:
 
                 FN_cell = F[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
-                A[cell, cell] += veff[cell] * face_mag / d_mag
-                if i in top_index:
-                    b[cell] -= FN_cell * BC
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC
+
+                if i in self.mesh.boundaries['inlet']:
+                    k = (3/2) * BC['inlet'][4] * BC['inlet'][0]**2
+                    e = ((self.Cmu ** 0.75) * (k ** 1.5))/0.1 # ALTER THE LENGTH SCALE
+                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    b[cell] -= FN_cell * k
+                    b[cell] += (veff[cell] * face_mag / d_mag) * k
+                elif i in self.mesh.boundaries['outlet']:
+                    # need to alter as it would be neumann <- CHECK THESE
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][5]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][5]
+                elif i in self.mesh.boundaries['upperWall']:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][5]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][5]
+                elif i in self.mesh.boundaries['lowerWall']:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][5]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][5]
+                else:
+                    A[cell, cell] += 1 # CHECK THIS
+                    b[cell] -= d_mag * BC['outlet'][5]
+                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][5]
         
         return A, b
