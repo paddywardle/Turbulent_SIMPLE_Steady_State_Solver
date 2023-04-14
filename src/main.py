@@ -27,31 +27,32 @@ if __name__ == "__main__":
     write = WriteFiles(SIM_num)
 
     # Read settings
-    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps = read.ReadSettings('config/config.json')
+    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
+
+    # Write Boundaries files
+    write.CreateFileStructure("backward_step")
+    write.WriteBoundaries(BC)
 
     # calculate kinematic viscosity
     viscosity = L/Re
 
-    dim = 10
-
     mesh = Mesh(f"MeshFiles/{directory}")
 
     # set initial conditions for the simulation (Ux, Uy, and P) <- assuming fluid is at rest at the start of the simulation
-    u_field = read.ReadInitialConds("InitialConds/"+directory+"/u_field.txt")
-    v_field = read.ReadInitialConds("InitialConds/"+directory+"/v_field.txt")
-    p_field = read.ReadInitialConds("InitialConds/"+directory+"/p_field.txt")
-    k_field = read.ReadInitialConds("InitialConds/"+directory+"/k_field.txt")
-    e_field = read.ReadInitialConds("InitialConds/"+directory+"/e_field.txt")
+    u_field, v_field, w_field = read.ReadVectorField("InitialConds/"+directory+"/U")
+    p_field = read.ReadScalarField("InitialConds/"+directory+"/p")
+    k_field = read.ReadScalarField("InitialConds/"+directory+"/k")
+    e_field = read.ReadScalarField("InitialConds/"+directory+"/epsilon")
 
     # timing the simulation
     start_time = time.perf_counter()
 
-    simple = SIMPLE(mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps)
+    simple = SIMPLE(write, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps)
 
-    u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, iterations = simple.iterate(u_field, v_field, p_field, k_field, e_field, dim, SIMPLE_tol, SIMPLE_its)
+    u, v, w, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, iterations = simple.iterate(u_field, v_field, w_field, p_field, k_field, e_field, BC[0], SIMPLE_tol, SIMPLE_its)
 
     simulation_run_time = round(time.perf_counter() - start_time, 2)
 
     print("Simulation run time: " + str(simulation_run_time))
 
-    write.WriteResults(u, v, z, p, k, e, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, simulation_run_time, directory, iterations)
+    #write.WriteResults(u, v, w, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, simulation_run_time, directory, iterations)
