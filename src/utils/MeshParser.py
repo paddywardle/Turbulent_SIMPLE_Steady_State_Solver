@@ -15,7 +15,7 @@ class MeshParser:
         
         owners = []
 
-        with open(f"{self.directory}/owner.txt") as f:
+        with open(f"{self.directory}/owner") as f:
             for line in f.readlines()[21:]:
                 if line.strip() == ")":
                     break
@@ -23,7 +23,7 @@ class MeshParser:
 
         neighbours = [-1]*len(owners)
 
-        with open(f"{self.directory}/neighbour.txt") as f:
+        with open(f"{self.directory}/neighbour") as f:
             for i, line in enumerate(f.readlines()[21:]):
                 if line.strip() == ")":
                     break
@@ -35,7 +35,7 @@ class MeshParser:
 
         faces = []
 
-        with open(f"{self.directory}/faces.txt") as f:
+        with open(f"{self.directory}/faces") as f:
             for i, line in enumerate(f.readlines()[20:]):
                 if line.strip() == ")":
                     break
@@ -50,7 +50,7 @@ class MeshParser:
 
         faces = []
 
-        with open(f"{self.directory}/points.txt") as f:
+        with open(f"{self.directory}/points") as f:
             for i, line in enumerate(f.readlines()[20:]):
                 if line.strip() == ")":
                     break
@@ -76,7 +76,7 @@ class MeshParser:
     def Boundaries(self):
         
         boundaries = {}
-        with open(f"{self.directory}/boundary.txt") as f:
+        with open(f"{self.directory}/boundary") as f:
             patches = f.readlines()[19:]
             for i, line in enumerate(patches):
                 if line.strip() == ")":
