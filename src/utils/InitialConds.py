@@ -6,24 +6,34 @@ from MeshParser import MeshParser
 def InitialConds():
 
     read = ReadFiles()
-    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps = read.ReadSettings('config/config.json')
+    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
 
     mesh = MeshParser(f"MeshFiles/{directory}")
     num_cells = len(mesh.cells)
 
-    u_field = np.zeros((num_cells, 1))
+    u_field = np.ones((num_cells, 1))
     v_field = np.zeros((num_cells, 1))
+    w_field = np.zeros((num_cells, 1))
+    U = np.hstack((u_field, v_field, w_field))
     p_field = np.zeros((num_cells, 1))
     k_field = np.ones((num_cells, 1))
     e_field = ((Cmu ** 0.75) * np.power(k_field, 1.5))/0.1
     
-    WriteFile(f"InitialConds/{directory}/u_field.txt", u_field)
-    WriteFile(f"InitialConds/{directory}/v_field.txt", v_field)
-    WriteFile(f"InitialConds/{directory}/p_field.txt", p_field)
-    WriteFile(f"InitialConds/{directory}/k_field.txt", k_field)
-    WriteFile(f"InitialConds/{directory}/e_field.txt", e_field)
+    WriteVectorField(f"InitialConds/{directory}/U", U)
+    WriteScalarField(f"InitialConds/{directory}/p", p_field)
+    WriteScalarField(f"InitialConds/{directory}/k", k_field)
+    WriteScalarField(f"InitialConds/{directory}/epsilon", e_field)
 
-def WriteFile(filename, data):
+def WriteVectorField(filename, data):
+
+    with open(filename, "w") as f:
+        f.write(str(len(data))+"\n")
+        f.write("(\n")
+        for i, (u, v, w) in enumerate(data):
+            f.write(f"({u} {v} {w})\n")
+        f.write(")\n;\n\n")
+
+def WriteScalarField(filename, data):
 
     with open(filename, "w") as f:
         for i in data:
