@@ -10,8 +10,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
     """
 
-    def __init__(self, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
+    def __init__(self, writer, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
         
+        self.writer = writer
         LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
         TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         self.alpha_u = alpha_u
@@ -583,7 +584,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
-    def iterate(self, u, v, p, k, e, BC, tol=1e-6, maxIts=100):
+    def iterate(self, u, v, w, p, k, e, BC, tol=1e-6, maxIts=100):
     
         """
         SIMPLE algorithm loop.
@@ -612,8 +613,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         p = p.copy()
 
         # Initial flux to feed in
-        z = np.zeros_like(v)
-        F = self.face_flux(u, v, z, BC)
+        F = self.face_flux(u, v, w, BC)
 
         # Lists to store residuals
         res_SIMPLE_ls = []
@@ -627,15 +627,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, z, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, z, p, k, e, veff, F, BC)
+            u, v, w, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, w, p, k, e, veff, F, BC)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
             res_pressure_ls.append(res_pressure)
+            self.writer.WriteIteration(u, v, w, p, k, e, F, i+1)
             its += 1
             if (i+1 > 10):
                 if res_SIMPLE[0] < tol and res_SIMPLE[1] < tol:
                     print(f"Simulation converged in {i+1} iterations")
                     break
 
-        return u, v, z, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, its
+        return u, v, w, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure_ls, its
