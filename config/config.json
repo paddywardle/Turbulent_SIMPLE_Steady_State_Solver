@@ -6,16 +6,26 @@
         "y1": 0.1,
         "z0": 0.0,
         "z1": 0.01,
-        "MeshFile": "20x20"
+        "MeshFile": "backward_step"
     },
     "SIMULATION":{
         "Re": 4000,
         "alpha_u": 0.98,
         "alpha_p": 0.4,
+        "Boundaries":{"inlet": [44.2, 0, 0, 0, 0.061, 0],
+                      "outlet": [0, 0, 0, 0, 0, 0],
+                      "upperWall": [0, 0, 0, 0, 0, 0],
+                      "lowerWall": [0, 0, 0, 0, 0, 0],
+                      "frontAndBack": [0, 0, 0, 0, 0, 0]},
+        "BoundaryTypes":{"inlet": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue"],
+                      "outlet": ["zeroGradient", "zeroGradient", "zeroGradient", "fixedValue", "zeroGradient", "zeroGradient"],
+                      "upperWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
+                      "lowerWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
+                      "frontAndBack": ["empty", "empty", "empty", "empty", "empty", "empty"]},
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 1e-6,
-            "its": 10                               
+            "its": 1                        
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
