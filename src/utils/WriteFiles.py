@@ -45,14 +45,24 @@ class WriteFiles():
         with open(f"Results/SIM {self.SIM_num}/0/"+filename, "r") as f:
             boundaries = f.readlines()
 
+        with open(f"OpenFOAM_Headers/U", "r") as f:
+            header = f.readlines()
+
+        location = f'\tlocation\t"{it}";\n'
+        header[12] = location
+
         with gzip.open(f"Results/SIM {self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
-            f.write(f"{len(u_field)}\n".encode("utf-8"))
+
+            for head in header:
+                f.write(head.encode("utf-8"))
+
+            f.write(f"\n{len(u_field)}\n".encode("utf-8"))
             f.write("(\n".encode("utf-8"))
             for i, (u, v, z) in enumerate(zip(u_field, v_field, z_field)):
                 f.write(f"({u} {v} {z})\n".encode("utf-8"))
             f.write(")\n;\n\n".encode("utf-8"))
 
-            for bound in boundaries:
+            for bound in boundaries[20:]:
                 f.write(bound.encode("utf-8"))
 
     def WriteVolScalarField(self, field, filename, it):
@@ -61,21 +71,38 @@ class WriteFiles():
             with open(f"Results/SIM {self.SIM_num}/0/"+filename, "r") as f:
                 boundaries = f.readlines()
 
+        with open(f"OpenFOAM_Headers/{filename}", "r") as f:
+            header = f.readlines()
+
+        location = f'\tlocation\t"{it}";\n'
+        header[12] = location
+
         with gzip.open(f"Results/SIM {self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
-            f.write(f"{len(field)}\n".encode("utf-8"))
+
+            for head in header:
+                f.write(head.encode("utf-8"))
+
+            f.write(f"\n{len(field)}\n".encode("utf-8"))
             f.write("(\n".encode("utf-8"))
             for i, val in enumerate(field):
                 f.write(f"{val}\n".encode("utf-8"))
             f.write(")\n;\n\n".encode("utf-8"))
 
             if filename != "phi":
-                for bound in boundaries:
+                for bound in boundaries[20:]:
                     f.write(bound.encode("utf-8"))
 
     def WriteVectorBoundaries(self, BC):
 
+        with open(f"OpenFOAM_Headers/U", "r") as f:
+            header = f.readlines()
+
         with open(f"Results/SIM {self.SIM_num}/0/"+"U", "w") as f:
-            f.write("boundaryField\n{\n")
+
+            for head in header:
+                f.write(head)
+
+            f.write("\nboundaryField\n{\n")
             for key in BC[1].keys():
                 f.write(f"\t{key}\n\t{{\n")
                 if BC[1][key][0] == "fixedValue":
@@ -93,9 +120,16 @@ class WriteFiles():
             var = 4
         elif filename == "epsilon":
             var = 5
+
+        with open(f"OpenFOAM_Headers/{filename}", "r") as f:
+            header = f.readlines()
     
         with open(f"Results/SIM {self.SIM_num}/0/"+filename, "w") as f:
-            f.write("boundaryField\n{\n")
+
+            for head in header:
+                f.write(head)
+
+            f.write("\nboundaryField\n{\n")
             for key in BC[1].keys():
                 f.write(f"\t{key}\n\t{{\n")
                 if BC[1][key][var] == "fixedValue":
