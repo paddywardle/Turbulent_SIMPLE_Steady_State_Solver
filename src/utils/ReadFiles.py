@@ -55,13 +55,37 @@ class ReadFiles():
 
         return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, [BC, BCTypes]
     
-    def ReadInitialConds(self, filename):
+    def ReadVectorField(self, filename):
 
         """
-        Function to read single initial field file
+        Function to read vector initial field file.
 
         Args:
-            filename (string): name of field file
+            filename (string): name of field file.
+        """
+
+        u = []
+        v = []
+        w = []
+
+        with open(filename) as f:
+            for line in f.readlines()[2:]:
+                if line.strip() == ")":
+                    break
+                ls = line.strip().strip("()").split()
+                u.append(float(ls[0]))
+                v.append(float(ls[1]))
+                w.append(float(ls[2]))
+        
+        return np.array(u, dtype=float), np.array(v, dtype=float), np.array(w, dtype=float)
+
+    def ReadScalarField(self, filename):
+
+        """
+        Function to read scalar initial field file.
+
+        Args:
+            filename (string): name of field file.
         """
 
         data = []
