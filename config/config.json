@@ -9,7 +9,7 @@
         "MeshFile": "backward_step"
     },
     "SIMULATION":{
-        "Re": 4000,
+        "Re": 200,
         "alpha_u": 0.98,
         "alpha_p": 0.4,
         "Boundaries":{"inlet": [44.2, 0, 0, 0, 0.061, 0],
@@ -25,7 +25,7 @@
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 1e-6,
-            "its": 1                        
+            "its": 5
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
