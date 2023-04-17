@@ -74,11 +74,11 @@ class LinearSystem(LinearSystemBCs):
 
             # diffusive diag contributions
             A[cell, cell] += veff[cell] * face_mag / d_mag
-            A[neighbour, neighbour] += veff[cell] * face_mag / d_mag
+            A[neighbour, neighbour] += veff[neighbour] * face_mag / d_mag
 
             # diffusive off-diag contributions
             A[cell, neighbour] -= veff[cell] * face_mag / d_mag
-            A[neighbour, cell] -= veff[cell] * face_mag / d_mag
+            A[neighbour, cell] -= veff[neighbour] * face_mag / d_mag
 
         return A, b
     
