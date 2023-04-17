@@ -55,10 +55,7 @@ class TurbulenceModel(TurbulenceModelBCs):
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
-        for i in range(len(cell_owner_neighbour)):
-
-            cell = cell_owner_neighbour[i][0]
-            neighbour = cell_owner_neighbour[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 continue
@@ -126,10 +123,7 @@ class TurbulenceModel(TurbulenceModelBCs):
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
-        for i in range(len(cell_owner_neighbour)):
-
-            cell = cell_owner_neighbour[i][0]
-            neighbour = cell_owner_neighbour[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 continue

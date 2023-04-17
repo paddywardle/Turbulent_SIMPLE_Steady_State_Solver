@@ -40,10 +40,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # loops through owner neighbour pairs
         # applies boundary condition if neighbour = -1
         # linearly interpolates velocity onto the face otherwise
-        for i in range(len(owner_neighbours)):
-
-            cell = owner_neighbours[i][0]
-            neighbour = owner_neighbours[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour)):
             
             if (neighbour == -1):
                 if i in self.mesh.boundaries['inlet']:
@@ -111,10 +108,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         owner_neighbour = self.mesh.cell_owner_neighbour()
 
         # loops through owner neighbour pairs
-        for i in range(len(owner_neighbour)):
-
-            cell = owner_neighbour[i][0]
-            neighbour = owner_neighbour[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             # zero gradient boundary condition
             if neighbour == -1:
@@ -143,9 +137,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_centres = self.mesh.cell_centres()
 
         # loops through owner neighbour pairs and linearly interpolates ap onto the face
-        for i in range(len(owner_neighbour)):
-            cell = owner_neighbour[i][0]
-            neighbour = owner_neighbour[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 ap_face[i] = A[cell, cell]
@@ -178,9 +170,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_p_face = self.face_pressure(p_field)
 
         # loops through owner neighbour pairs and corrected face fluxes
-        for i in range(len(owner_neighbours)):
-            cell = owner_neighbours[i][0]
-            neighbour = owner_neighbours[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
             face_area_vector = face_area_vectors[i]
             face_mag = np.linalg.norm(face_area_vector)
 
@@ -339,11 +329,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_centres = self.mesh.cell_centres()
 
         # loops through owner neighbour pairs
-        for i in range(len(owner_neighbour)):
-
-            cell = owner_neighbour[i][0]
-            neighbour = owner_neighbour[i][1]
-
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
             # zero gradient boundary condition
             if neighbour == -1:
                 delta_p_face[i] = 0
@@ -400,13 +386,11 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         H = b.copy()
         owner_neighbours = self.mesh.cell_owner_neighbour()
 
-        for i in range(len(owner_neighbours)):
-
-            cell = owner_neighbours[i][0]
-            neighbour = owner_neighbours[i][1]
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 continue
+            
             H[cell] -= A[cell, neighbour] * u[neighbour]
             H[neighbour] -= A[neighbour, cell] * u[cell]
 
@@ -447,10 +431,8 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         total_flux = np.zeros((self.mesh.num_cells(), 1))
 
         # loops through owner neighbour pairs and adds fluxes to owners and neighbours - skips neighbour if boundary
-        for i in range(len(owner_neighbour)):
-            cell = owner_neighbour[i][0]
-            neighbour = owner_neighbour[i][1]
-
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+            
             total_flux[cell] += F[i]
 
             if neighbour == -1:

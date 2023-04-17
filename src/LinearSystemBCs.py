@@ -41,10 +41,9 @@ class LinearSystemBCs:
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
-        for i in range(len(cell_owner_neighbour)):
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if cell_owner_neighbour[i][1] == -1:
-                cell = cell_owner_neighbour[i][0]
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
@@ -59,7 +58,7 @@ class LinearSystemBCs:
                     b[cell] += (veff[cell] * face_mag / d_mag) * BC['inlet'][idx]
                 elif i in self.mesh.boundaries['outlet']:
                     # need to alter as it would be neumann <- CHECK THESE
-                    A[cell, cell] += 1 # CHECK THIS
+                    #A[cell, cell] += 1 # CHECK THIS
                     b[cell] -= d_mag * BC['outlet'][idx]
                     b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][idx]
                 elif i in self.mesh.boundaries['upperWall']:
@@ -98,9 +97,8 @@ class LinearSystemBCs:
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
-        for i in range(len(cell_owner_neighbour)):
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
             if cell_owner_neighbour[i][1] == -1:
-                cell = cell_owner_neighbour[i][0]
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
