@@ -22,27 +22,27 @@ class WriteFiles():
             field (np.array): field to write to file
         """
     
-        with open(f"Results/SIM {self.SIM_num}/"+filename+".txt", "w") as f:
+        with open(f"Results/SIM_{self.SIM_num}/"+filename+".txt", "w") as f:
             for i in field:
                 f.write(str(i) + "\n")
 
     def CreateFileStructure(self, MeshDir):
 
-        if not os.path.exists(f"Results/SIM {self.SIM_num}"):
-            os.mkdir(f"Results/SIM {self.SIM_num}")
-            os.mkdir(f"Results/SIM {self.SIM_num}/constant")
-            os.mkdir(f"Results/SIM {self.SIM_num}/constant/polyMesh")
+        if not os.path.exists(f"Results/SIM_{self.SIM_num}"):
+            os.mkdir(f"Results/SIM_{self.SIM_num}")
+            os.mkdir(f"Results/SIM_{self.SIM_num}/constant")
+            os.mkdir(f"Results/SIM_{self.SIM_num}/constant/polyMesh")
 
-        shutil.copy(f"MeshFiles/{MeshDir}/blockMeshDict", f"Results/SIM {self.SIM_num}/constant/polyMesh")
-        shutil.copy(f"MeshFiles/{MeshDir}/boundary", f"Results/SIM {self.SIM_num}/constant/polyMesh")
-        shutil.copy(f"MeshFiles/{MeshDir}/faces", f"Results/SIM {self.SIM_num}/constant/polyMesh")
-        shutil.copy(f"MeshFiles/{MeshDir}/neighbour", f"Results/SIM {self.SIM_num}/constant/polyMesh")
-        shutil.copy(f"MeshFiles/{MeshDir}/owner", f"Results/SIM {self.SIM_num}/constant/polyMesh")
-        shutil.copy(f"MeshFiles/{MeshDir}/points", f"Results/SIM {self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/blockMeshDict", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/boundary", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/faces", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/neighbour", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/owner", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
+        shutil.copy(f"MeshFiles/{MeshDir}/points", f"Results/SIM_{self.SIM_num}/constant/polyMesh")
 
     def WriteVolVectorField(self, u_field, v_field, z_field, filename, it):
 
-        with open(f"Results/SIM {self.SIM_num}/0/"+filename, "r") as f:
+        with open(f"Results/SIM_{self.SIM_num}/0/"+filename, "r") as f:
             boundaries = f.readlines()
 
         with open(f"OpenFOAM_Headers/U", "r") as f:
@@ -51,7 +51,7 @@ class WriteFiles():
         location = f'\tlocation\t"{it}";\n'
         header[12] = location
 
-        with gzip.open(f"Results/SIM {self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
+        with gzip.open(f"Results/SIM_{self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
 
             for head in header:
                 f.write(head.encode("utf-8"))
@@ -68,7 +68,7 @@ class WriteFiles():
     def WriteVolScalarField(self, field, filename, it):
 
         if filename != "phi":
-            with open(f"Results/SIM {self.SIM_num}/0/"+filename, "r") as f:
+            with open(f"Results/SIM_{self.SIM_num}/0/"+filename, "r") as f:
                 boundaries = f.readlines()
 
         with open(f"OpenFOAM_Headers/{filename}", "r") as f:
@@ -77,7 +77,7 @@ class WriteFiles():
         location = f'\tlocation\t"{it}";\n'
         header[12] = location
 
-        with gzip.open(f"Results/SIM {self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
+        with gzip.open(f"Results/SIM_{self.SIM_num}/{it}/"+filename+".gz", "wb") as f:
 
             for head in header:
                 f.write(head.encode("utf-8"))
@@ -97,7 +97,7 @@ class WriteFiles():
         with open(f"OpenFOAM_Headers/U", "r") as f:
             header = f.readlines()
 
-        with open(f"Results/SIM {self.SIM_num}/0/"+"U", "w") as f:
+        with open(f"Results/SIM_{self.SIM_num}/0/"+"U", "w") as f:
 
             for head in header:
                 f.write(head)
@@ -124,7 +124,7 @@ class WriteFiles():
         with open(f"OpenFOAM_Headers/{filename}", "r") as f:
             header = f.readlines()
     
-        with open(f"Results/SIM {self.SIM_num}/0/"+filename, "w") as f:
+        with open(f"Results/SIM_{self.SIM_num}/0/"+filename, "w") as f:
 
             for head in header:
                 f.write(head)
@@ -141,8 +141,8 @@ class WriteFiles():
 
     def WriteBoundaries(self, BC):
         
-        if not os.path.exists(f"Results/SIM {self.SIM_num}/0"):
-            os.mkdir(f"Results/SIM {self.SIM_num}/0")
+        if not os.path.exists(f"Results/SIM_{self.SIM_num}/0"):
+            os.mkdir(f"Results/SIM_{self.SIM_num}/0")
 
         self.WriteVectorBoundaries(BC)
         self.WriteScalarBoundaries(BC, "p")
@@ -151,11 +151,11 @@ class WriteFiles():
 
     def WriteIteration(self, u_field, v_field, z_field, p_field, k_field, e_field, F, it):
 
-        if not os.path.exists(f"Results/SIM {self.SIM_num}"):
-            os.mkdir(f"Results/SIM {self.SIM_num}")
+        if not os.path.exists(f"Results/SIM_{self.SIM_num}"):
+            os.mkdir(f"Results/SIM_{self.SIM_num}")
         
-        if not os.path.exists(f"Results/SIM {self.SIM_num}/{it}"):     
-            os.mkdir(f"Results/SIM {self.SIM_num}/{it}")
+        if not os.path.exists(f"Results/SIM_{self.SIM_num}/{it}"):     
+            os.mkdir(f"Results/SIM_{self.SIM_num}/{it}")
 
         self.WriteVolVectorField(u_field, v_field, z_field, "U", it)
         self.WriteVolScalarField(p_field, "p", it)
@@ -174,8 +174,8 @@ class WriteFiles():
             p_field (np.array): pressure field
             SIMPLE_residuals (np.array): SIMPLE residuals
         """
-        if not os.path.exists(f"Results/SIM {self.SIM_num}"):
-            os.mkdir(f"Results/SIM {self.SIM_num}")
+        if not os.path.exists(f"Results/SIM_{self.SIM_num}"):
+            os.mkdir(f"Results/SIM_{self.SIM_num}")
 
         self.WriteVolVectorField(u_field, v_field, z_field, "U")
         self.WriteVolScalarField(p_field, "p")
@@ -187,7 +187,7 @@ class WriteFiles():
         self.WriteFile("resy_momentum", resy_momentum_ls)
         self.WriteFile("res_pressure", res_pressure)
 
-        with open(f"Results/SIM {self.SIM_num}/"+"SIM_time"+".txt", "w") as f:
+        with open(f"Results/SIM_{self.SIM_num}/"+"SIM_time"+".txt", "w") as f:
             f.write("Simulation Time (seconds): " + str(sim_time)+"\n")
             f.write("Mesh Resolution: "+ resolution + "\n")
             f.write("Iterations: " + str(iterations) )
