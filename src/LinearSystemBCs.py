@@ -28,6 +28,8 @@ class LinearSystemBCs:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
         """
+        A = A.copy()
+        b = b.copy()
 
         if vel_comp == "u":
             idx = 0
@@ -43,7 +45,7 @@ class LinearSystemBCs:
 
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
-            if cell_owner_neighbour[i][1] == -1:
+            if neighbour == -1:
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
@@ -53,26 +55,26 @@ class LinearSystemBCs:
                 d_mag = np.linalg.norm(cell_centre - face_centre)
                 
                 if i in self.mesh.boundaries['inlet']:
-                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['inlet'][idx]
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['inlet'][idx]
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['inlet'][idx]
                 elif i in self.mesh.boundaries['outlet']:
                     # need to alter as it would be neumann <- CHECK THESE
-                    #A[cell, cell] += 1 # CHECK THIS
+                    A[cell, cell] += 1 # CHECK THIS
                     b[cell] -= d_mag * BC['outlet'][idx]
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['outlet'][idx]
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['outlet'][idx]
                 elif i in self.mesh.boundaries['upperWall']:
-                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['upperWall'][idx]
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['upperWall'][idx]
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['lowerWall'][idx]
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['lowerWall'][idx]
-                else:
-                    A[cell, cell] += veff[cell] * face_mag / d_mag
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['lowerWall'][idx]
+                elif i in self.mesh.boundaries['frontAndBack']:
+                    A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['frontAndBack'][idx]
-                    b[cell] += (veff[cell] * face_mag / d_mag) * BC['frontAndBack'][idx]
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
         
         return A, b
     
@@ -92,13 +94,16 @@ class LinearSystemBCs:
 
         """
 
+        Ap = Ap.copy()
+        bp = bp.copy()
+
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-            if cell_owner_neighbour[i][1] == -1:
+            if neighbour == -1:
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
@@ -106,9 +111,9 @@ class LinearSystemBCs:
                 d_mag = np.linalg.norm(cell_centre - face_centre)
 
                 if i in self.mesh.boundaries['outlet']:
-                    Ap[cell, cell] -= (face_mag / d_mag) * raP[cell]
-                    bp += (face_mag * BC['outlet'][3] / d_mag) * raP[cell]
+                    Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
+                    bp -= (face_mag * BC['outlet'][3] / d_mag) * raP[i]
 
-                bp[cell_owner_neighbour[i][0]] += F[i]
+                bp[cell] += F[i]
 
         return Ap, bp

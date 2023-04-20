@@ -28,6 +28,10 @@ class LinearSystem(LinearSystemBCs):
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
         """
+
+        A = A.copy()
+        b = b.copy()
+        
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -73,12 +77,12 @@ class LinearSystem(LinearSystemBCs):
                 A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive diag contributions
-            A[cell, cell] += veff[cell] * face_mag / d_mag
-            A[neighbour, neighbour] += veff[neighbour] * face_mag / d_mag
+            A[cell, cell] += veff[i] * face_mag / d_mag
+            A[neighbour, neighbour] += veff[i] * face_mag / d_mag
 
             # diffusive off-diag contributions
-            A[cell, neighbour] -= veff[cell] * face_mag / d_mag
-            A[neighbour, cell] -= veff[neighbour] * face_mag / d_mag
+            A[cell, neighbour] -= veff[i] * face_mag / d_mag
+            A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
         return A, b
     
@@ -145,6 +149,9 @@ class LinearSystem(LinearSystemBCs):
 
         """
 
+        Ap = Ap.copy()
+        bp = bp.copy()
+
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -164,29 +171,26 @@ class LinearSystem(LinearSystemBCs):
             d_mag = np.linalg.norm(cell_centre - neighbour_centre)
 
             # diffusive diag contributions
-            Ap[cell, cell] -= (face_mag / d_mag) * raP[cell]
-            Ap[neighbour, neighbour] -= (face_mag / d_mag) * raP[neighbour]
+            Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
+            Ap[neighbour, neighbour] -= (face_mag / d_mag) * raP[i]
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += (face_mag / d_mag) * raP[cell]
-            Ap[neighbour, cell] += (face_mag / d_mag) * raP[neighbour]
+            Ap[cell, neighbour] += (face_mag / d_mag) * raP[i]
+            Ap[neighbour, cell] += (face_mag / d_mag) * raP[i]
 
             bp[cell] += FN_cell
             bp[neighbour] += FN_neighbour
 
-        # set reference point
-        Ap[0,0] *= 1.1
-
         return Ap, bp
     
-    def pressure_disc(self, F, raP, BC):
+    def pressure_disc(self, F, raP_face, BC):
 
         """
         This function discretises the pressure laplacia nto get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
             F (np.array): flux array
-            raP (np.array): reciprocal of momentum diagonal coefficients
+            raP_face (np.array): reciprocal of momentum diagonal coefficients
             BC (int): boundary conditions
         Returns:
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
@@ -198,9 +202,12 @@ class LinearSystem(LinearSystemBCs):
         Ap = np.zeros((N, N))
         bp = np.zeros((N, 1)).flatten()
 
-        Ap, bp = self.pressure_mat(Ap, bp, F, raP)
+        Ap, bp = self.pressure_mat(Ap, bp, F, raP_face)
 
-        Ap, bp = self.pressure_boundary_mat(Ap, bp, F, raP, BC)    
+        Ap, bp = self.pressure_boundary_mat(Ap, bp, F, raP_face, BC)
+
+        # set reference point
+        Ap[0,0] *= 1.1
 
         return Ap, bp
 
