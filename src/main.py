@@ -30,7 +30,7 @@ if __name__ == "__main__":
     Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
 
     # Write Boundaries files
-    write.CreateFileStructure("backward_step")
+    write.CreateFileStructure(directory)
     write.WriteBoundaries(BC)
 
     # calculate kinematic viscosity
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     p_field = read.ReadScalarField("InitialConds/"+directory+"/p")
     k_field = read.ReadScalarField("InitialConds/"+directory+"/k")
     e_field = read.ReadScalarField("InitialConds/"+directory+"/epsilon")
-
+    
     # timing the simulation
     start_time = time.perf_counter()
 
