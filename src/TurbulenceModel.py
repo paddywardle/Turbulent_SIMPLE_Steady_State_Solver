@@ -36,6 +36,29 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         return veff.flatten()
 
+    def veff_face(self, veff):
+
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+
+        veff_face = np.zeros((self.mesh.num_faces(),))
+
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+
+            if neighbour == -1:
+                # going to zero gradient for now <- CHECK THIS
+                veff_face[i] = veff[cell]
+                continue
+
+            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
+            fx = PF_mag / PN_mag;
+            veff_face[i] = veff[cell] + fx * (veff[neighbour] - veff[cell])
+
+        return veff_face
+
     def k_mat(self, A, b, F, veff):
 
         """
@@ -95,12 +118,12 @@ class TurbulenceModel(TurbulenceModelBCs):
                 A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive diag contributions
-            A[cell, cell] += veff[cell] * face_mag / d_mag
-            A[neighbour, neighbour] += veff[neighbour] * face_mag / d_mag
+            A[cell, cell] += veff[i] * face_mag / d_mag
+            A[neighbour, neighbour] += veff[i] * face_mag / d_mag
 
             # diffusive off-diag contributions
-            A[cell, neighbour] -= veff[cell] * face_mag / d_mag
-            A[neighbour, cell] -= veff[neighbour] * face_mag / d_mag
+            A[cell, neighbour] -= veff[i] * face_mag / d_mag
+            A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
         return A, b
     
@@ -118,6 +141,7 @@ class TurbulenceModel(TurbulenceModelBCs):
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
         """
+        
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -163,12 +187,12 @@ class TurbulenceModel(TurbulenceModelBCs):
                 A[neighbour, cell] += min(FN_neighbour, 0)
 
             # diffusive diag contributions
-            A[cell, cell] += veff[cell] * face_mag / d_mag
-            A[neighbour, neighbour] += veff[neighbour] * face_mag / d_mag
+            A[cell, cell] += veff[i] * face_mag / d_mag
+            A[neighbour, neighbour] += veff[i] * face_mag / d_mag
 
             # diffusive off-diag contributions
-            A[cell, neighbour] -= veff[cell] * face_mag / d_mag
-            A[neighbour, cell] -= veff[neighbour] * face_mag / d_mag
+            A[cell, neighbour] -= veff[i] * face_mag / d_mag
+            A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
         return A, b
     
@@ -189,9 +213,11 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         veffk = self.EffectiveVisc(k, e, self.sigmak)
 
-        A, b = self.k_mat(A, b, F, veffk)
+        veffk_face = self.veff_face(veffk)
 
-        A, b = self.k_boundary_mat(A, b, F, veffk, BC)
+        A, b = self.k_mat(A, b, F, veffk_face)
+
+        A, b = self.k_boundary_mat(A, b, F, veffk_face, BC)
 
         A, b = self.ke_UR(A, b, k)
 
@@ -206,9 +232,11 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         veffEps = self.EffectiveVisc(k, e, self.sigmaEps)
 
-        A, b = self.e_mat(A, b, F, veffEps)
+        veffEps_face = self.veff_face(veffEps)
 
-        A, b = self.e_boundary_mat(A, b, F, veffEps, BC)
+        A, b = self.e_mat(A, b, F, veffEps_face)
+
+        A, b = self.e_boundary_mat(A, b, F, veffEps_face, BC)
 
         A, b = self.ke_UR(A, b, e)
         
