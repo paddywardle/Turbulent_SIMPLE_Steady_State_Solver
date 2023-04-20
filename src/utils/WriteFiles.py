@@ -27,6 +27,7 @@ class WriteFiles():
                 f.write(str(i) + "\n")
 
     def CreateFileStructure(self, MeshDir):
+        print(MeshDir)
 
         if not os.path.exists(f"Results/SIM_{self.SIM_num}"):
             os.mkdir(f"Results/SIM_{self.SIM_num}")

@@ -90,6 +90,6 @@ class MeshParser:
 
 if __name__ == "__main__":
 
-    mp = MeshParser("MeshFiles/backward_step")
+    mp = MeshParser("MeshFiles/backward_step_smaller")
     points = [0,1,41,42,2091,2092,2132,2133]
-    print(mp.Points()[[2, 5]])
+    print(mp.boundaries)

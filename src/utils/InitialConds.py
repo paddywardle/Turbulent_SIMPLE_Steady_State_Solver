@@ -11,13 +11,15 @@ def InitialConds():
     mesh = MeshParser(f"MeshFiles/{directory}")
     num_cells = len(mesh.cells)
 
-    u_field = np.ones((num_cells, 1))
+    u_field = np.zeros((num_cells, 1))
     v_field = np.zeros((num_cells, 1))
     w_field = np.zeros((num_cells, 1))
     U = np.hstack((u_field, v_field, w_field))
     p_field = np.zeros((num_cells, 1))
-    k_field = (3/2) * np.square(BC[0]['inlet'][4] * u_field)
-    e_field = ((Cmu ** 0.75) * np.power(k_field, 1.5))/0.1
+    k_field = np.ones((num_cells, 1)) * 0.375
+    e_field = np.ones((num_cells, 1)) * 14.855
+    #k_field = (3/2) * np.square(BC[0]['inlet'][4] * u_field)
+    #e_field = ((Cmu ** 0.75) * np.power(k_field, 1.5))/0.1
     
     WriteVectorField(f"InitialConds/{directory}/U", U)
     WriteScalarField(f"InitialConds/{directory}/p", p_field)
