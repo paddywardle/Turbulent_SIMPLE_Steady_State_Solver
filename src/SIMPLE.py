@@ -18,7 +18,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
-    def face_velocity(self, u, BC):
+    def face_velocity(self, u, BC, vel_comp):
 
         """
         Function to calculate face velocity
@@ -31,35 +31,42 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         """
 
+        if vel_comp == "u":
+            idx = 0
+        elif vel_comp == "v":
+            idx = 1
+        else:
+            idx = 2
+
         uface = np.zeros((self.mesh.num_faces(), 1))
 
-        owner_neighbours = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
 
         # loops through owner neighbour pairs
         # applies boundary condition if neighbour = -1
         # linearly interpolates velocity onto the face otherwise
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour)):
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
             
             if (neighbour == -1):
                 if i in self.mesh.boundaries['inlet']:
-                    uface[i] = BC['inlet'][0]
+                    uface[i] = BC['inlet'][idx]
                 elif i in self.mesh.boundaries['outlet']:
-                    uface[i] = BC['outlet'][0]
+                    uface[i] = u[cell]
                 elif i in self.mesh.boundaries['upperWall']:
-                    uface[i] = BC['upperWall'][0]
+                    uface[i] = BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    uface[i] = BC['lowerWall'][0]
+                    uface[i] = BC['lowerWall'][idx]
                 else:
-                    uface[i] = BC['frontAndBack'][0]
+                    uface[i] = BC['frontAndBack'][idx]
             else:
                 PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
                 PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
                 uface[i] = u[cell] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
 
         return uface
-    
+
     def face_flux(self, u, v, z, BC):
 
         """
@@ -76,9 +83,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         F = []
 
-        uface = self.face_velocity(u, BC)
-        vface = self.face_velocity(v, BC)
-        zface = self.face_velocity(z, BC)
+        uface = self.face_velocity(u, BC, "u")
+        vface = self.face_velocity(v, BC, "v")
+        zface = self.face_velocity(z, BC, "w")
         face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
         
         # horizontally stack x, y and z face velocity values
@@ -104,8 +111,8 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         """
 
-        delta_p_face = np.zeros((self.mesh.num_faces(), 1))
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        delta_p_face = np.zeros((self.mesh.num_faces(),))
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
 
         # loops through owner neighbour pairs
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
@@ -119,20 +126,20 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         
         return delta_p_face
     
-    def face_ap(self, A):
+    def face_raP(self, raP):
 
         """
         Function to calculate face value of momentum coefficients
 
         Args:
-            A (np.array): momentum matrix
+            raP (np.array): reciprocal of diagonal matrix coefficients
         Returns:
-            ap_face (np.array): face diagonal momentum values
+            raP_face (np.array): reciprocal face diagonal momentum values
 
         """
 
-        ap_face = np.zeros((self.mesh.num_faces(), 1))
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        raP_face = np.zeros((self.mesh.num_faces(),))
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_centres = self.mesh.face_centres()
         cell_centres = self.mesh.cell_centres()
 
@@ -140,13 +147,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
-                ap_face[i] = A[cell, cell]
-            else:
-                PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
-                PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-                ap_face[i] = A[cell, cell] + (PF_mag * (A[neighbour, neighbour]-A[cell, cell])) / PN_mag
+                # zero gradient Neumann
+                raP_face[i] = raP[cell]
+                continue
+            
+            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
+            fx = PF_mag / PN_mag;
+            raP_face[i] = raP[cell] + fx * (raP[neighbour]-raP[cell])
         
-        return ap_face
+        return raP_face
     
     def face_flux_correction(self, F, raP, p_field):
 
@@ -164,10 +174,11 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         F = F.copy()
 
-        owner_neighbours = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
         face_area_vectors = self.mesh.face_area_vectors()
         delta_p_face = self.face_pressure(p_field)
+        raP_face = self.face_raP(raP)
 
         # loops through owner neighbour pairs and corrected face fluxes
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
@@ -183,7 +194,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
 
             # pressure coefficent
-            aPN = (face_mag / d_mag) * raP[cell]
+            aPN = (face_mag / d_mag) * raP_face[i]
 
             # correct face flux
             F[i] -= aPN * delta_p_face[i]
@@ -229,10 +240,10 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_px = np.zeros_like(p_field)
         delta_py = np.zeros_like(p_field)
         delta_pz = np.zeros_like(p_field)
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
 
-        for i, owner_neighbour in enumerate(owner_neighbour):
+        for i, owner_neighbour in enumerate(cell_owner_neighbour):
 
             owner = owner_neighbour[0]
             neighbour = owner_neighbour[1]
@@ -260,10 +271,10 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_px = np.zeros_like(p_field)
         delta_py = np.zeros_like(p_field)
         delta_pz = np.zeros_like(p_field)
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
 
-        for i, owner_neighbour in enumerate(owner_neighbour):
+        for i, owner_neighbour in enumerate(cell_owner_neighbour):
 
             owner = owner_neighbour[0]
             neighbour = owner_neighbour[1]
@@ -289,13 +300,11 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         delta_px = np.zeros_like(p_field)
         delta_py = np.zeros_like(p_field)
         delta_pz = np.zeros_like(p_field)
-        owner_neighbour = self.mesh.cell_owner_neighbour()
-        d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        d_mag = np.linalg.norm(cell_centres[cell_owner_neighbour[0][0]] - cell_centres[cell_owner_neighbour[0][1]])
 
-        for i, owner_neighbour in enumerate(owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
-            owner = owner_neighbour[0]
-            neighbour = owner_neighbour[1]
             sf = face_area_vectors[i]
 
             if neighbour == -1:
@@ -324,7 +333,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         """
 
         delta_p_face = np.zeros((self.mesh.num_faces(), 1))
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
 
@@ -384,7 +393,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         """
 
         H = b.copy()
-        owner_neighbours = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
 
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
@@ -427,7 +436,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             total_flux (np.array): total flux for each cell
         """
 
-        owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         total_flux = np.zeros((self.mesh.num_cells(), 1))
 
         # loops through owner neighbour pairs and adds fluxes to owners and neighbours - skips neighbour if boundary
@@ -512,11 +521,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         z = z.copy()
         F = F.copy()
         p = p.copy()
+        k = k.copy()
+        e = e.copy()
+
+        # Project viscosity onto faces
+        veff_face = self.veff_face(veff)
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, veff, 'u', BC)
-        Ay, by = self.momentum_disc(v, F, veff, 'v', BC)
-        Az, bz = self.momentum_disc(z, F, veff, 'w', BC)
+        Ax, bx = self.momentum_disc(u, F, veff_face, 'u', BC)
+        Ay, by = self.momentum_disc(v, F, veff_face, 'v', BC)
+        Az, bz = self.momentum_disc(z, F, veff_face, 'w', BC)
 
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
@@ -530,6 +544,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # reciprocal of diagonal coefficients
         raP = self.raP(Ax)
+        raP_face = self.face_raP(raP)
 
         # HbyA operators
         HbyAx = self.HbyA(Ax, bx, uplus1, raP) # u velocity
@@ -539,7 +554,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
 
         # Pressure corrector
-        Ap, bp = self.pressure_disc(Fpre, raP, BC)
+        Ap, bp = self.pressure_disc(Fpre, raP_face, BC)
         p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
@@ -587,12 +602,13 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             k (np.array): final turbulence kinetic energy field
             e (np.array): final turbulence kinetic energy dissipation field
             res_SIMPLE_ls (list): list of SIMPLE residuals
-        """ 
-
+        """
         # avoiding numpy behaviour
         u = u.copy()
         v = v.copy()
         p = p.copy()
+        k = k.copy()
+        e = e.copy()
 
         # Initial flux to feed in
         F = self.face_flux(u, v, w, BC)
