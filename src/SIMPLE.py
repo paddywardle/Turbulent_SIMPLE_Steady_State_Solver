@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.sparse.linalg import bicg
+from scipy.sparse.linalg import bicg, bicgstab, cg, spilu
+from scipy.sparse import csc_matrix
 from LinearSystem import LinearSystem
 from TurbulenceModel import TurbulenceModel
 import sys
@@ -60,10 +61,11 @@ class SIMPLE(LinearSystem, TurbulenceModel):
                     uface[i] = BC['lowerWall'][idx]
                 else:
                     uface[i] = BC['frontAndBack'][idx]
-            else:
-                PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
-                PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-                uface[i] = u[cell] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
+                continue
+            
+            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
+            uface[i] = u[cell] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
 
         return uface
 
@@ -99,7 +101,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return F
     
-    def face_pressure(self, p_field):
+    def face_pressure(self, p_field, BC):
 
         """
         Function to calculate face pressure gradient.
@@ -119,7 +121,10 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
             # zero gradient boundary condition
             if neighbour == -1:
-                delta_p_face[i] = 0
+                if i in self.mesh.boundaries['outlet']:
+                    delta_p_face[i] = BC['outlet'][3] - p_field[cell]
+                else:
+                    delta_p_face[i] = 0
                 continue
 
             delta_p_face[i] = (p_field[neighbour] - p_field[cell])
@@ -158,7 +163,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         
         return raP_face
     
-    def face_flux_correction(self, F, raP, p_field):
+    def face_flux_correction(self, F, raP, p_field, BC):
 
         """
         Function to correct face flux field.
@@ -177,7 +182,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
         face_area_vectors = self.mesh.face_area_vectors()
-        delta_p_face = self.face_pressure(p_field)
+        delta_p_face = self.face_pressure(p_field, BC)
         raP_face = self.face_raP(raP)
 
         # loops through owner neighbour pairs and corrected face fluxes
@@ -529,15 +534,27 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # Momentum Predictor
         Ax, bx = self.momentum_disc(u, F, veff_face, 'u', BC)
+        Ax_sparse = csc_matrix(Ax)
+        Mx = spilu(Ax_sparse)
+        Mx = (Mx.L @ Mx.U).A
+        Ax = Mx @ Ax
+        bx = Mx @ bx
+        
         Ay, by = self.momentum_disc(v, F, veff_face, 'v', BC)
+        Ay_sparse = csc_matrix(Ay)
+        My = spilu(Ay_sparse)
+        My = (My.L @ My.U).A
+        Ay = My @ Ay
+        by = My @ by
+        
         Az, bz = self.momentum_disc(z, F, veff_face, 'w', BC)
-
+        
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
 
-        uplus1, exitcode = bicg(Ax, bx, x0=u, maxiter=200)
-        vplus1, exitcode = bicg(Ay, by, x0=v, maxiter=200)
-        zplus1, exitcode = bicg(Az, bz, x0=z, maxiter=200)
+        uplus1, exitcode = bicgstab(Ax, bx, x0=u, maxiter=200, tol=1e-5)
+        vplus1, exitcode = bicgstab(Ay, by, x0=v, maxiter=200, tol=1e-5)
+        zplus1, exitcode = bicgstab(Az, bz, x0=z, maxiter=200, tol=1e-5)
 
         resx_momentum = [self.residual(Ax, bx, u), self.residual(Ax, bx, uplus1)]
         resy_momentum = [self.residual(Ay, by, v), self.residual(Ay, by, vplus1)]
@@ -555,11 +572,17 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # Pressure corrector
         Ap, bp = self.pressure_disc(Fpre, raP_face, BC)
-        p_field, exitcode = bicg(Ap, bp, x0=p, maxiter=200)
+        Ap_sparse = csc_matrix(Ap)
+        Mp = spilu(Ap_sparse)
+        Mp = (Mp.L @ Mp.U).A
+        Ap = Mp @ Ap
+        bp = Mp @ bp
+        p_field, exitcode = cg(Ap, bp, x0=p, maxiter=200, tol=1e-6)        
+        #p_field = np.linalg.inv(Ap) @ bp
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
         # Face flux correction
-        Fcorr = self.face_flux_correction(Fpre, raP, p_field)
+        Fcorr = self.face_flux_correction(Fpre, raP, p_field, BC)
 
         # Explicit pressure under-relaxation
         p_field = p + self.alpha_p * (p_field - p)
@@ -569,9 +592,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         # turbulence systems
         Ak, bk = self.k_disc(k, e, F, BC)
-        k_field, exitcode = bicg(Ak, bk, x0=k, maxiter=200)
+        k_field, exitcode = bicgstab(Ak, bk, x0=k, maxiter=200, tol=1e-5)
         Ae, be = self.e_disc(k, e, F, BC)
-        e_field, exitcode = bicg(Ae, be, x0=e, maxiter=200)
+        e_field, exitcode = bicgstab(Ae, be, x0=e, maxiter=200, tol=1e-5)
 
         # recalculating turbulent parameters
         veff = self.EffectiveVisc(k, e, 1)
