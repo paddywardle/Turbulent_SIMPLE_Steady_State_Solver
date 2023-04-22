@@ -84,6 +84,10 @@ class LinearSystem(LinearSystemBCs):
             A[cell, neighbour] -= veff[i] * face_mag / d_mag
             A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
+           # if i in [0,1,9420,9620,9780,14580]:
+
+                #print(i, FN_cell, FN_neighbour, veff[i], face_mag, d_mag, max(FN_cell, 0), veff[i] * face_mag / d_mag)
+
         return A, b
     
     def momentum_UR(self, A, b, u):
@@ -100,7 +104,10 @@ class LinearSystem(LinearSystemBCs):
 
         """
 
-        for i in range(len(A)):
+        A = A.copy()
+        b = b.copy()
+
+        for i in range(self.mesh.num_cells()):
             A[i, i] /= self.alpha_u
             b[i] += ((1-self.alpha_u)/self.alpha_u) * u[i] * A[i, i]
 
@@ -186,7 +193,7 @@ class LinearSystem(LinearSystemBCs):
     def pressure_disc(self, F, raP_face, BC):
 
         """
-        This function discretises the pressure laplacia nto get the diagonal, off-diagonal and source contributions to the linear system.
+        This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
 
         Args:
             F (np.array): flux array

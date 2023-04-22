@@ -53,16 +53,16 @@ class LinearSystemBCs:
 
                 FN_cell = F[i]
                 d_mag = np.linalg.norm(cell_centre - face_centre)
-                
+
                 if i in self.mesh.boundaries['inlet']:
                     A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['inlet'][idx]
                     b[cell] += (veff[i] * face_mag / d_mag) * BC['inlet'][idx]
                 elif i in self.mesh.boundaries['outlet']:
                     # need to alter as it would be neumann <- CHECK THESE
-                    A[cell, cell] += 1 # CHECK THIS
-                    b[cell] -= d_mag * BC['outlet'][idx]
-                    b[cell] += (veff[i] * face_mag / d_mag) * BC['outlet'][idx]
+                    A[cell, cell] += FN_cell # CHECK THIS
+                    b[cell] -= FN_cell * d_mag * BC['outlet'][idx]
+                    b[cell] += veff[i] * face_mag * BC['outlet'][idx]
                 elif i in self.mesh.boundaries['upperWall']:
                     A[cell, cell] += veff[i] * face_mag / d_mag
                     b[cell] -= FN_cell * BC['upperWall'][idx]
@@ -112,7 +112,7 @@ class LinearSystemBCs:
 
                 if i in self.mesh.boundaries['outlet']:
                     Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
-                    bp -= (face_mag * BC['outlet'][3] / d_mag) * raP[i]
+                    bp[cell] -= (face_mag * BC['outlet'][3] / d_mag) * raP[i]
 
                 bp[cell] += F[i]
 
