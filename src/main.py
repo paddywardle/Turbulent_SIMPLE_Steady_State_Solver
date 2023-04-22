@@ -27,14 +27,11 @@ if __name__ == "__main__":
     write = WriteFiles(SIM_num)
 
     # Read settings
-    Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
+    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
 
     # Write Boundaries files
     write.CreateFileStructure(directory)
     write.WriteBoundaries(BC)
-
-    # calculate kinematic viscosity
-    viscosity = L/Re
 
     mesh = Mesh(f"MeshFiles/{directory}")
 
