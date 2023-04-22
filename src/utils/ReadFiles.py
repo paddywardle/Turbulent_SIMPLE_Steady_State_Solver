@@ -35,6 +35,7 @@ class ReadFiles():
         simulation_sets = self.ReadJSON(filename)['SIMULATION']
         MESH_sets = self.ReadJSON(filename)['MESH']
         Re = simulation_sets['Re']
+        viscosity = simulation_sets['viscosity']
         alpha_u = simulation_sets['alpha_u']
         alpha_p = simulation_sets['alpha_p']
         conv_scheme = simulation_sets["SIMPLE"]['conv_scheme']
@@ -53,7 +54,7 @@ class ReadFiles():
         BC = simulation_sets["Boundaries"]
         BCTypes = simulation_sets["BoundaryTypes"]
 
-        return Re, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, [BC, BCTypes]
+        return Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, [BC, BCTypes]
     
     def ReadVectorField(self, filename):
 
