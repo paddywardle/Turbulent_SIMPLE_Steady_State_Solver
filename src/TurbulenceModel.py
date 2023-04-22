@@ -32,7 +32,7 @@ class TurbulenceModel(TurbulenceModelBCs):
 
     def EffectiveVisc(self, k_arr, e_arr, sigma):
 
-        veff = self.viscosity + self.TurbulentVisc(k_arr, e_arr) / sigma
+        veff = self.viscosity * np.ones((self.mesh.num_cells(),))# + self.TurbulentVisc(k_arr, e_arr) / sigma
 
         return veff.flatten()
 
