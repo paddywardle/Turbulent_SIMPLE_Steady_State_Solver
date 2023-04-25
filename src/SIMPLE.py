@@ -48,13 +48,13 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # loops through owner neighbour pairs
         # applies boundary condition if neighbour = -1
         # linearly interpolates velocity onto the face otherwise
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
             
             if (neighbour == -1):
                 if i in self.mesh.boundaries['inlet']:
                     uface[i] = BC['inlet'][idx]
                 elif i in self.mesh.boundaries['outlet']:
-                    uface[i] = u[cell]
+                    uface[i] = u[owner]
                 elif i in self.mesh.boundaries['upperWall']:
                     uface[i] = BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
@@ -62,10 +62,13 @@ class SIMPLE(LinearSystem, TurbulenceModel):
                 else:
                     uface[i] = BC['frontAndBack'][idx]
                 continue
-            
-            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-            uface[i] = u[cell] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
+
+            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+            fx = fN_mag / PN_mag;
+
+            #uface[i] = u[owner] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
+            uface[i] = fx * u[owner] + (1 - fx) * u[neighbour]
 
         return uface
 
@@ -149,17 +152,17 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_centres = self.mesh.cell_centres()
 
         # loops through owner neighbour pairs and linearly interpolates ap onto the face
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 # zero gradient Neumann
-                raP_face[i] = raP[cell]
+                raP_face[i] = raP[owner]
                 continue
             
-            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-            fx = PF_mag / PN_mag;
-            raP_face[i] = raP[cell] + fx * (raP[neighbour]-raP[cell])
+            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+            fx = fN_mag / PN_mag;
+            raP_face[i] = fx * raP[owner] + (1 - fx) * raP[neighbour]
         
         return raP_face
     
@@ -224,48 +227,107 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         v = v.copy()
         z = z.copy()
 
-        #delta_px, delta_py = self.cell_centre_pressure(p_field)
-        delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
-
-        # cell volumes
-        cell_vols = self.mesh.cell_volumes()
+        #delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
+        gradP = self.gradP(p_field)
 
         for cell in range(self.mesh.num_cells()):
 
-            u[cell] -= delta_px[cell] * raP[cell]# * cell_vols[cell]
-            v[cell] -= delta_py[cell] * raP[cell]# * cell_vols[cell]
-            z[cell] -= delta_pz[cell] * raP[cell]# * cell_vols[cell]
+            #u[cell] -= delta_px[cell] * raP[cell]# * cell_vols[cell]
+            #v[cell] -= delta_py[cell] * raP[cell]# * cell_vols[cell]
+            #z[cell] -= delta_pz[cell] * raP[cell]# * cell_vols[cell]
+
+            u[cell] -= gradP[0][cell] * raP[cell]
+            v[cell] -= gradP[1][cell] * raP[cell]
+            z[cell] -= gradP[2][cell] * raP[cell]
 
         return u, v, z
 
+    def gradP(self, p_field):
+        
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        V = self.mesh.cell_volumes()
+        
+        p_grad = np.zeros((3, self.mesh.num_cells()))
+        
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
+
+            if neighbour == -1:
+                if i in self.mesh.boundaries['inlet']:
+                    uface[i] = BC['inlet'][idx]
+                elif i in self.mesh.boundaries['outlet']:
+                    uface[i] = u[owner]
+                elif i in self.mesh.boundaries['upperWall']:
+                    uface[i] = BC['upperWall'][idx]
+                elif i in self.mesh.boundaries['lowerWall']:
+                    uface[i] = BC['lowerWall'][idx]
+                else:
+                    uface[i] = BC['frontAndBack'][idx]
+                continue
+
+            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+            fx = fN_mag / PN_mag;
+
+            p_face = fx * p_field[owner] + (1 - fx) * p_field[neighbour]
+
+            cmptGrad = 0
+            for cmptSf in range(3):
+                p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
+
+                p_grad[cmptGrad][neighbour] -= p_face * face_area_vectors[i][cmptSf]
+
+                cmptGrad += 1
+
+        #for cmpt in range(3):
+         #   p_grad[cmpt] /= V
+
+        return p_grad
+        
     def cell_pressure_centred(self, p_field):
 
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        
         delta_px = np.zeros_like(p_field)
         delta_py = np.zeros_like(p_field)
         delta_pz = np.zeros_like(p_field)
+
+        dist_x = np.zeros_like(p_field)
+        dist_y = np.zeros_like(p_field)
+        
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        d_mag = np.linalg.norm(cell_centres[owner_neighbour[0][0]] - cell_centres[owner_neighbour[0][1]])
 
-        for i, owner_neighbour in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
-            owner = owner_neighbour[0]
-            neighbour = owner_neighbour[1]
             sf = face_area_vectors[i]
 
-            if neighbour == -1:
-                # zero gradient boundary
-                continue
-            elif sf[0] != 0:
-                delta_px[owner] += (p_field[neighbour]-p_field[owner])
-                delta_px[neighbour] -= (p_field[neighbour]-p_field[owner])
+            if sf[0] != 0:
+                if neighbour == -1:
+                    delta_px[owner] += p_field[owner]
+                    dist_x[owner] += np.linalg.norm(cell_centres[owner] - face_centres[i])
+                    continue
+                dist_x[owner] += np.linalg.norm(cell_centres[owner] - cell_centres[neighbour])
+                dist_x[neighbour] += np.linalg.norm(cell_centres[owner] - cell_centres[neighbour])
+                delta_px[owner] += p_field[neighbour]
+                delta_px[neighbour] -= p_field[owner]
             elif sf[1] != 0:
-                delta_py[owner] += (p_field[neighbour]-p_field[owner])
-                delta_py[neighbour] -= (p_field[neighbour]-p_field[owner])
-
-        delta_px /= (2*d_mag)
-        delta_py /= (2*d_mag)
+                if neighbour == -1:
+                    delta_py[owner] += p_field[owner]
+                    dist_y[owner] += np.linalg.norm(cell_centres[owner] - face_centres[i])
+                    continue
+                dist_y[owner] += np.linalg.norm(cell_centres[owner] - cell_centres[neighbour])
+                dist_y[neighbour] += np.linalg.norm(cell_centres[owner] - cell_centres[neighbour])
+                delta_py[owner] += p_field[neighbour]
+                delta_py[neighbour] -= p_field[owner]
+                
+        print(dist_y[dist_y == 0])
+        delta_px /= dist_x
+        delta_py /= dist_y
 
         return delta_px, delta_py, delta_pz
     
@@ -357,13 +419,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             delta_p_face[i] = ((p_field[neighbour] - p_field[cell]) / d_mag) * face_mag
         
         return delta_p_face
-    
-    def cell_centre_pressure2(self, A, b, u, raP):
-
-        H = self.H(A, b, u)
-        delta_p = H - (1/raP) * u
-        
-        return delta_p
     
     def raP(self, A):
 
