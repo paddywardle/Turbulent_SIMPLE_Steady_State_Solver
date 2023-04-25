@@ -45,17 +45,17 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         veff_face = np.zeros((self.mesh.num_faces(),))
 
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 # going to zero gradient for now <- CHECK THIS
-                veff_face[i] = veff[cell]
+                veff_face[i] = veff[owner]
                 continue
 
-            PF_mag = np.linalg.norm(face_centres[i] - cell_centres[cell])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[cell])
-            fx = PF_mag / PN_mag;
-            veff_face[i] = veff[cell] + fx * (veff[neighbour] - veff[cell])
+            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+            fx = fN_mag / PN_mag;
+            veff_face[i] = fx * veff[owner] + (1 - fx) * veff[neighbour]
 
         return veff_face
 
