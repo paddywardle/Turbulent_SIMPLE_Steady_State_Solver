@@ -184,6 +184,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
         face_area_vectors = self.mesh.face_area_vectors()
         delta_p_face = self.face_pressure(p_field, BC)
         raP_face = self.face_raP(raP)
@@ -196,10 +197,9 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             # nothing happens at boundary due to 0 gradient boundary conditions
             if neighbour == -1:
                 # zero gradient boundary condition
-                F[i] -= 0
-                continue
-            
-            d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
+                d_mag = np.linalg.norm(cell_centres[cell] - face_centres[i])
+            else:
+                d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
 
             # pressure coefficent
             aPN = (face_mag / d_mag) * raP_face[i]
@@ -209,7 +209,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return F
 
-    def cell_centre_correction(self, raP, u, v, z, p_field):
+    def cell_centre_correction(self, raP, u, v, z, p_field, BC):
 
         """
         Function to correct cell centred velocities
@@ -228,7 +228,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         z = z.copy()
 
         #delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
-        gradP = self.gradP(p_field)
+        gradP = self.gradP(p_field, BC)
 
         for cell in range(self.mesh.num_cells()):
 
@@ -242,7 +242,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         return u, v, z
 
-    def gradP(self, p_field):
+    def gradP(self, p_field, BC):
         
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()
@@ -256,16 +256,16 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
-                if i in self.mesh.boundaries['inlet']:
-                    uface[i] = BC['inlet'][idx]
-                elif i in self.mesh.boundaries['outlet']:
-                    uface[i] = u[owner]
-                elif i in self.mesh.boundaries['upperWall']:
-                    uface[i] = BC['upperWall'][idx]
-                elif i in self.mesh.boundaries['lowerWall']:
-                    uface[i] = BC['lowerWall'][idx]
+                if i in self.mesh.boundaries['outlet']:
+                    p_face = BC["outlet"][3]
                 else:
-                    uface[i] = BC['frontAndBack'][idx]
+                    p_face = p_field[owner]
+
+                cmptGrad = 0
+                for cmptSf in range(3):
+                    p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
+                    cmptGrad += 1
+                    
                 continue
 
             fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
@@ -282,8 +282,8 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
                 cmptGrad += 1
 
-        #for cmpt in range(3):
-         #   p_grad[cmpt] /= V
+        for cmpt in range(3):
+            p_grad[cmpt] /= V
 
         return p_grad
         
@@ -432,10 +432,14 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         """
         
         raP = []
+        
+        V = self.mesh.cell_volumes()
 
         for i in range(len(A)):
 
             raP.append(1/A[i, i])
+
+        raP *= V
 
         return np.array(raP) 
     
@@ -454,15 +458,18 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         H = b.copy()
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        V = self.mesh.cell_volumes()
 
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
             if neighbour == -1:
                 continue
             
-            H[cell] -= A[cell, neighbour] * u[neighbour]
-            H[neighbour] -= A[neighbour, cell] * u[cell]
+            H[owner] -= A[owner, neighbour] * u[neighbour]
+            H[neighbour] -= A[neighbour, owner] * u[owner]
 
+        H /= V
+            
         return H
     
     def HbyA(self, A, b, u, raP):
@@ -624,6 +631,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
+        #Fpre = self.face_flux(uplus1, vplus1, zplus1, BC)
 
         # Pressure corrector
         Ap, bp = self.pressure_disc(Fpre, raP_face, BC)
@@ -643,7 +651,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         p_field = p + self.alpha_p * (p_field - p)
 
         # Cell-centred correction
-        uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field)
+        uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field, BC)
 
         # turbulence systems
         Ak, bk = self.k_disc(k, e, F, BC)

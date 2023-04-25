@@ -55,25 +55,25 @@ class LinearSystemBCs:
                 d_mag = np.linalg.norm(cell_centre - face_centre)
 
                 if i in self.mesh.boundaries['inlet']:
-                    A[cell, cell] += veff[i] * face_mag / d_mag
-                    b[cell] -= FN_cell * BC['inlet'][idx]
-                    b[cell] += (veff[i] * face_mag / d_mag) * BC['inlet'][idx]
+                    A[cell, cell] += veff[i] * face_mag / d_mag # diffusion
+                    b[cell] += FN_cell * BC['inlet'][idx] # convection
+                    b[cell] += (veff[i] * face_mag / d_mag) * BC['inlet'][idx] # diffusion
                 elif i in self.mesh.boundaries['outlet']:
                     # need to alter as it would be neumann <- CHECK THESE
-                    A[cell, cell] += FN_cell # CHECK THIS
-                    b[cell] -= FN_cell * d_mag * BC['outlet'][idx]
-                    b[cell] += veff[i] * face_mag * BC['outlet'][idx]
+                    A[cell, cell] += FN_cell # convection
+                    b[cell] += FN_cell * d_mag * BC['outlet'][idx] # convection
+                    b[cell] += veff[i] * face_mag * BC['outlet'][idx] # diffusion
                 elif i in self.mesh.boundaries['upperWall']:
                     A[cell, cell] += veff[i] * face_mag / d_mag
-                    b[cell] -= FN_cell * BC['upperWall'][idx]
+                    b[cell] += FN_cell * BC['upperWall'][idx]
                     b[cell] += (veff[i] * face_mag / d_mag) * BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
                     A[cell, cell] += veff[i] * face_mag / d_mag
-                    b[cell] -= FN_cell * BC['lowerWall'][idx]
+                    b[cell] += FN_cell * BC['lowerWall'][idx]
                     b[cell] += (veff[i] * face_mag / d_mag) * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
                     A[cell, cell] += veff[i] * face_mag / d_mag
-                    b[cell] -= FN_cell * BC['frontAndBack'][idx]
+                    b[cell] += FN_cell * BC['frontAndBack'][idx]
                     b[cell] += (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
         
         return A, b

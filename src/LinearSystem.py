@@ -84,10 +84,6 @@ class LinearSystem(LinearSystemBCs):
             A[cell, neighbour] -= veff[i] * face_mag / d_mag
             A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
-           # if i in [0,1,9420,9620,9780,14580]:
-
-                #print(i, FN_cell, FN_neighbour, veff[i], face_mag, d_mag, max(FN_cell, 0), veff[i] * face_mag / d_mag)
-
         return A, b
     
     def momentum_UR(self, A, b, u):
