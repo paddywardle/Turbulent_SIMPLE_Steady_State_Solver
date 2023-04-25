@@ -11,8 +11,8 @@
     "SIMULATION":{
         "Re": 4000,
 	"viscosity": 1.5e-5,
-        "alpha_u": 0.7,
-        "alpha_p": 0.3,
+        "alpha_u": 0.9,
+        "alpha_p": 0.4,
         "Boundaries":{"inlet": [1, 0, 0, 0, 0.375, 14.855],
                       "outlet": [0, 0, 0, 0, 0, 0],
                       "upperWall": [0, 0, 0, 0, 0, 0],
@@ -26,7 +26,7 @@
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 1e-6,
-            "its": 30
+            "its": 5
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
