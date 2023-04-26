@@ -1,7 +1,7 @@
 import numpy as np
-from LinearSystemBCs import LinearSystemBCs
+from fv.volField.MomentumSystemBCs import MomentumSystemBCs
 
-class LinearSystem(LinearSystemBCs):
+class MomentumSystem(MomentumSystemBCs):
 
     """
     Class to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
@@ -150,7 +150,7 @@ class LinearSystem(LinearSystemBCs):
 
         return A, b
     
-    def momentum_disc(self, u, F, veff, vel_comp, BC):
+    def MomentumDisc(self, u, F, veff, vel_comp, BC):
 
         """
         This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system.
@@ -175,83 +175,6 @@ class LinearSystem(LinearSystemBCs):
 
         return A, b
     
-    def pressure_mat(self, Ap, bp, F, raP):
-
-        """
-        This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
-
-        Args:
-            Ap (np.array): pressure matrix
-            bp (np.array): pressure RHS
-            F (np.array): flux array
-            raP (np.array): reciprocal of momentum diagonal coefficients
-        Returns:
-            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
-
-        """
-
-        Ap = Ap.copy()
-        bp = bp.copy()
-
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
-
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                continue
-
-            face_area_vector = face_area_vectors[i]
-            cell_centre = cell_centres[cell]
-            face_mag = np.linalg.norm(face_area_vector)
-            FN_cell = F[i]
-            FN_neighbour = -F[i]
-
-            neighbour_centre = cell_centres[neighbour]
-            d_mag = np.linalg.norm(cell_centre - neighbour_centre)
-
-            # diffusive diag contributions
-            Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
-            Ap[neighbour, neighbour] -= (face_mag / d_mag) * raP[i]
-
-            # diffusive off-diag contributions
-            Ap[cell, neighbour] += (face_mag / d_mag) * raP[i]
-            Ap[neighbour, cell] += (face_mag / d_mag) * raP[i]
-
-            bp[cell] += FN_cell
-            bp[neighbour] += FN_neighbour
-
-        return Ap, bp
-    
-    def pressure_disc(self, F, raP_face, BC):
-
-        """
-        This function discretises the pressure laplacian to get the diagonal, off-diagonal and source contributions to the linear system.
-
-        Args:
-            F (np.array): flux array
-            raP_face (np.array): reciprocal of momentum diagonal coefficients
-            BC (int): boundary conditions
-        Returns:
-            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
-
-        """
-
-        N = len(self.mesh.cells)
-
-        Ap = np.zeros((N, N))
-        bp = np.zeros((N, 1)).flatten()
-
-        Ap, bp = self.pressure_mat(Ap, bp, F, raP_face)
-
-        Ap, bp = self.pressure_boundary_mat(Ap, bp, F, raP_face, BC)
-
-        # set reference point
-        Ap[0,0] *= 1.1
-
-        return Ap, bp
-
     def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=1000):
 
         """

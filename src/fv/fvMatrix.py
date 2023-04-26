@@ -100,8 +100,11 @@ class fvMatrix():
 
         noComponents = 3
         F = np.zeros((self.mesh.num_faces(),))
-        
-        face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
+
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        face_area_vectors = self.mesh.face_area_vectors()
 
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
@@ -128,7 +131,7 @@ class fvMatrix():
 
         return F
     
-    def face_pressure(self, p_field, Ap, BC):
+    def face_pressure(self, p_field, Ap, raP, BC):
 
         """
         Function to calculate face pressure gradient.
@@ -142,19 +145,28 @@ class fvMatrix():
 
         delta_p_face = np.zeros((self.mesh.num_faces(),))
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+        raP_face = self.face_raP(raP)
+        face_area_vectors = self.mesh.face_area_vectors()
 
         # loops through owner neighbour pairs
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
+            face_area_vector = face_area_vectors[i]
+            face_mag = np.linalg.norm(face_area_vector)
 
             # zero gradient boundary condition
             if neighbour == -1:
+                d_mag = np.linalg.norm(cell_centres[owner] - face_centres[i])
                 if i in self.mesh.boundaries['outlet']:
-                    delta_p_face[i] = BC['outlet'][3] - p_field[cell]
+                    aPN = raP_face[i] * (face_mag / d_mag)
+                    delta_p_face[i] += aPN * (BC['outlet'][3] - p_field[owner])
                 else:
-                    delta_p_face[i] = 0
+                    delta_p_face[i] += 0
                 continue
 
-            delta_p_face[i] = (p_field[neighbour] - p_field[cell])
+            #delta_p_face[i] = (p_field[neighbour] - p_field[cell])
+            delta_p_face[i] += Ap[owner, neighbour] * p_field[neighbour] - Ap[neighbour, owner] * p_field[owner]
         
         return delta_p_face
     
@@ -190,7 +202,7 @@ class fvMatrix():
         
         return raP_face
 
-  def gradP(self, p_field, BC):
+    def gradP(self, p_field, BC):
         
         face_area_vectors = self.mesh.face_area_vectors()
         cell_centres = self.mesh.cell_centres()

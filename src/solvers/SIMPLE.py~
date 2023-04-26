@@ -1,12 +1,14 @@
 import numpy as np
 from scipy.sparse.linalg import bicg, bicgstab, cg, spilu
 from scipy.sparse import csc_matrix
-from LinearSystem import LinearSystem
-from TurbulenceModel import TurbulenceModel
-from fvMatrix import fvMatrix
 import sys
 
-class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
+from fv.volField.MomentumSystem import MomentumSystem
+from fv.scalarField.Laplacian import Laplacian
+from TurbulenceModel import TurbulenceModel
+from fv.fvMatrix import fvMatrix
+
+class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
@@ -15,54 +17,12 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
     def __init__(self, writer, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
         
         self.writer = writer
-        LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
+        MomentumSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
+        Laplacian.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
         TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         fvMatrix.__init__(self, mesh)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
-    
-    def face_flux_correction(self, F, Ap, p_field, BC):
-
-        """
-        Function to correct face flux field.
-
-        Args:
-            F (np.array): face flux field
-            raP (np.array): reciprocal of momentum matrix diagonal
-            p_field (np.array): pressure field
-        Returns:
-            F (np.array): corrected face flux field
-
-        """
-
-        F = F.copy()
-
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
-        face_area_vectors = self.mesh.face_area_vectors()
-        delta_p_face = self.face_pressure(p_field, Ap, BC)
-        raP_face = self.face_raP(raP)
-
-        # loops through owner neighbour pairs and corrected face fluxes
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-            face_area_vector = face_area_vectors[i]
-            face_mag = np.linalg.norm(face_area_vector)
-
-            # nothing happens at boundary due to 0 gradient boundary conditions
-            if neighbour == -1:
-                # zero gradient boundary condition
-                d_mag = np.linalg.norm(cell_centres[cell] - face_centres[i])
-            else:
-                d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
-
-            # pressure coefficent
-            aPN = (face_mag / d_mag) * raP_face[i]
-
-            # correct face flux
-            F[i] -= aPN * delta_p_face[i]
-
-        return F
 
     def cell_centre_correction(self, raP, u, v, z, p_field, BC):
 
@@ -174,21 +134,21 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
         veff_face = self.veff_face(veff)
 
         # Momentum Predictor
-        Ax, bx = self.momentum_disc(u, F, veff_face, 'u', BC)
+        Ax, bx = self.MomentumDisc(u, F, veff_face, 'u', BC)
         Ax_sparse = csc_matrix(Ax)
         Mx = spilu(Ax_sparse)
         Mx = (Mx.L @ Mx.U).A
         Ax = Mx @ Ax
         bx = Mx @ bx
         
-        Ay, by = self.momentum_disc(v, F, veff_face, 'v', BC)
+        Ay, by = self.MomentumDisc(v, F, veff_face, 'v', BC)
         Ay_sparse = csc_matrix(Ay)
         My = spilu(Ay_sparse)
         My = (My.L @ My.U).A
         Ay = My @ Ay
         by = My @ by
         
-        Az, bz = self.momentum_disc(z, F, veff_face, 'w', BC)
+        Az, bz = self.MomentumDisc(z, F, veff_face, 'w', BC)
         
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
@@ -210,10 +170,9 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
-        #Fpre = self.face_flux(uplus1, vplus1, zplus1, BC)
 
         # Pressure corrector
-        Ap, bp = self.pressure_disc(Fpre, raP_face, BC)
+        Ap, bp = self.PressureDisc(Fpre, raP_face, BC)
         Ap_sparse = csc_matrix(Ap)
         Mp = spilu(Ap_sparse)
         Mp = (Mp.L @ Mp.U).A
@@ -224,7 +183,7 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
         # Face flux correction
-        Fcorr = self.face_flux_correction(Fpre, raP, p_field, BC)
+        Fcorr = Fpre - self.face_pressure(p_field, Ap, raP, BC)
 
         # Explicit pressure under-relaxation
         p_field = p + self.alpha_p * (p_field - p)

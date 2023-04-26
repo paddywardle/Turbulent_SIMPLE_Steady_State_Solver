@@ -1,6 +1,6 @@
 import numpy as np
 
-class LinearSystemBCs:
+class MomentumSystemBCs:
 
     """
     Class to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
@@ -16,7 +16,7 @@ class LinearSystemBCs:
     def ConvMatMomentumBCs(self, A, b, F, veff, vel_comp, BC):
 
         """
-        This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system.
+        This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system for the convective term.
 
         Args:
             A (np.array): momentum matrix
@@ -67,7 +67,7 @@ class LinearSystemBCs:
     def DiffMatMomentumBCs(self, A, b, F, veff, vel_comp, BC):
 
         """
-        This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system.
+        This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system for the diffusive term.
 
         Args:
             A (np.array): momentum matrix
@@ -121,43 +121,3 @@ class LinearSystemBCs:
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
         
         return A, b
-    
-    def pressure_boundary_mat(self, Ap, bp, F, raP, BC):
-
-        """
-        This function discretises the pressure laplacian boundaries to get the diagonal, off-diagonal and source contributions to the linear system.
-
-        Args:
-            Ap (np.array): pressure matrix
-            bp (np.array): pressure RHS
-            F (np.array): flux array
-            raP (np.array): reciprocal of momentum diagonal coefficients
-            BC (dict): boundary conditions
-        Returns:
-            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
-
-        """
-
-        Ap = Ap.copy()
-        bp = bp.copy()
-
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
-
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-            if neighbour == -1:
-                face_area_vector = face_area_vectors[i]
-                face_centre = face_centres[i]
-                cell_centre = cell_centres[cell]
-                face_mag = np.linalg.norm(face_area_vector)
-                d_mag = np.linalg.norm(cell_centre - face_centre)
-
-                if i in self.mesh.boundaries['outlet']:
-                    Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
-                    bp[cell] -= (face_mag * BC['outlet'][3] / d_mag) * raP[i]
-
-                bp[cell] += F[i]
-
-        return Ap, bp
