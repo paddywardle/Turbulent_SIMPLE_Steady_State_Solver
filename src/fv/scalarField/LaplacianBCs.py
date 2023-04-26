@@ -3,15 +3,13 @@ import numpy as np
 class LaplacianBCs:
 
     """
-    Class to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
+    Class to discretise the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
     """
 
-    def __init__(self, mesh, conv_scheme, viscosity, alpha_u):
+    def __init__(self, mesh, conv_scheme):
 
         self.mesh = mesh
         self.conv_scheme = conv_scheme
-        self.viscosity = viscosity
-        self.alpha_u = alpha_u
     
     def LaplacianMatPressureBCs(self, Ap, bp, F, raP, BC):
 
@@ -44,10 +42,18 @@ class LaplacianBCs:
                 cell_centre = cell_centres[cell]
                 face_mag = np.linalg.norm(face_area_vector)
                 d_mag = np.linalg.norm(cell_centre - face_centre)
-
-                if i in self.mesh.boundaries['outlet']:
+                
+                if i in self.mesh.boundaries['inlet']:
+                    bp[cell] -= raP[i] * face_mag * BC['inlet'][3]
+                elif i in self.mesh.boundaries['outlet']:
                     Ap[cell, cell] -= (face_mag / d_mag) * raP[i]
-                    bp[cell] -= (face_mag * BC['outlet'][3] / d_mag) * raP[i]
+                    bp[cell] -= (face_mag / d_mag) * raP[i] * BC['outlet'][3]
+                elif i in self.mesh.boundaries['upperWall']:
+                    bp[cell] -= raP[i] * face_mag * BC['upperWall'][3]
+                elif i in self.mesh.boundaries['lowerWall']:
+                    bp[cell] -= raP[i] * face_mag * BC['lowerWall'][3]
+                elif i in self.mesh.boundaries['frontAndBack']:
+                    bp[cell] -= raP[i] * face_mag * BC['frontAndBack'][3]
 
                 bp[cell] += F[i]
 

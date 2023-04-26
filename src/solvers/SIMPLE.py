@@ -18,7 +18,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         
         self.writer = writer
         MomentumSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
-        Laplacian.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
+        Laplacian.__init__(self, mesh, conv_scheme)
         TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         fvMatrix.__init__(self, mesh)
         self.alpha_u = alpha_u
@@ -129,34 +129,26 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         p = p.copy()
         k = k.copy()
         e = e.copy()
-
+        
         # Project viscosity onto faces
         veff_face = self.veff_face(veff)
 
         # Momentum Predictor
         Ax, bx = self.MomentumDisc(u, F, veff_face, 'u', BC)
-        Ax_sparse = csc_matrix(Ax)
-        Mx = spilu(Ax_sparse)
-        Mx = (Mx.L @ Mx.U).A
-        Ax = Mx @ Ax
-        bx = Mx @ bx
-        
         Ay, by = self.MomentumDisc(v, F, veff_face, 'v', BC)
-        Ay_sparse = csc_matrix(Ay)
-        My = spilu(Ay_sparse)
-        My = (My.L @ My.U).A
-        Ay = My @ Ay
-        by = My @ by
-        
         Az, bz = self.MomentumDisc(z, F, veff_face, 'w', BC)
         
         # get momentum coefficients for report
         num_cells = self.mesh.num_cells()
 
-        uplus1, exitcode = bicgstab(Ax, bx, x0=u, maxiter=200, tol=1e-5)
-        vplus1, exitcode = bicgstab(Ay, by, x0=v, maxiter=200, tol=1e-5)
-        zplus1, exitcode = bicgstab(Az, bz, x0=z, maxiter=200, tol=1e-5)
+        #uplus1, exitcode = bicgstab(Ax, bx, x0=u, maxiter=200, tol=1e-5)
+        #vplus1, exitcode = bicgstab(Ay, by, x0=v, maxiter=200, tol=1e-5)
+        #zplus1, exitcode = bicgstab(Az, bz, x0=z, maxiter=200, tol=1e-5)
 
+        uplus1 = np.linalg.solve(Ax, bx)
+        vplus1 = np.linalg.solve(Ay, by)
+        zplus1 = z
+        
         resx_momentum = [self.residual(Ax, bx, u), self.residual(Ax, bx, uplus1)]
         resy_momentum = [self.residual(Ay, by, v), self.residual(Ay, by, vplus1)]
 
@@ -173,13 +165,10 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
 
         # Pressure corrector
         Ap, bp = self.PressureDisc(Fpre, raP_face, BC)
-        Ap_sparse = csc_matrix(Ap)
-        Mp = spilu(Ap_sparse)
-        Mp = (Mp.L @ Mp.U).A
-        Ap = Mp @ Ap
-        bp = Mp @ bp
-        p_field, exitcode = cg(Ap, bp, x0=p, maxiter=200, tol=1e-6)        
-        #p_field = np.linalg.inv(Ap) @ bp
+
+        #p_field, exitcode = bicgstab(Ap, bp, x0=p, maxiter=200, tol=1e-6)
+        p_field = np.linalg.solve(Ap, bp)
+        
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
 
         # Face flux correction

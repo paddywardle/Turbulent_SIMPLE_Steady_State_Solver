@@ -101,6 +101,7 @@ class fvMatrix():
         noComponents = 3
         F = np.zeros((self.mesh.num_faces(),))
 
+        U = np.array([u, v, z])
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
@@ -108,26 +109,28 @@ class fvMatrix():
 
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
+            uface = np.empty(noComponents)
+
             for cmpt in range(noComponents):
                 
                 if (neighbour == -1):
                     if i in self.mesh.boundaries['inlet']:
-                        uface = BC['inlet'][cmpt]
+                        uface[cmpt] = BC['inlet'][cmpt]
                     elif i in self.mesh.boundaries['outlet']:
-                        uface = u[cmpt]
+                        uface[cmpt] = U[cmpt][owner]
                     elif i in self.mesh.boundaries['upperWall']:
-                        uface = BC['upperWall'][cmpt]
+                        uface[cmpt] = BC['upperWall'][cmpt]
                     elif i in self.mesh.boundaries['lowerWall']:
-                        uface = BC['lowerWall'][cmpt]
+                        uface[cmpt] = BC['lowerWall'][cmpt]
                     else:
-                        uface = BC['frontAndBack'][cmpt]
+                        uface[cmpt] = BC['frontAndBack'][cmpt]
                 else:
-                    fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-                    PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-                    fx = fN_mag / PN_mag;
-                    uface = fx * u[owner] + (1 - fx) * u[neighbour]
-
-                F[i] += uface * face_area_vectors[i][cmpt]
+                    Nf_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+                    Pf_mag = np.linalg.norm(face_centres[i] - cell_centres[owner])
+                    fx = Nf_mag / (Pf_mag + Nf_mag)
+                    uface[cmpt] = fx * U[cmpt][owner] + (1 - fx) * U[cmpt][neighbour]
+                    
+            F[i] = np.dot(face_area_vectors[i], uface)
 
         return F
     

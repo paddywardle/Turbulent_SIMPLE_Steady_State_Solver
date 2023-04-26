@@ -4,15 +4,13 @@ from fv.scalarField.LaplacianBCs import LaplacianBCs
 class Laplacian(LaplacianBCs):
 
     """
-    Class to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
+    Class to discretise the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
     """
 
-    def __init__(self, mesh, conv_scheme, viscosity, alpha_u):
+    def __init__(self, mesh, conv_scheme):
 
         self.mesh = mesh
         self.conv_scheme = conv_scheme
-        self.viscosity = viscosity
-        self.alpha_u = alpha_u
     
     def LaplacianMatPressure(self, F, raP, BC):
 
@@ -56,8 +54,8 @@ class Laplacian(LaplacianBCs):
             Ap[neighbour, neighbour] -= (face_mag / d_mag) * raP[i]
 
             # diffusive off-diag contributions
-            Ap[cell, neighbour] += (face_mag / d_mag) * raP[i]
-            Ap[neighbour, cell] += (face_mag / d_mag) * raP[i]
+            Ap[cell, neighbour] = (face_mag / d_mag) * raP[i]
+            Ap[neighbour, cell] = (face_mag / d_mag) * raP[i]
 
             bp[cell] += FN_cell
             bp[neighbour] += FN_neighbour

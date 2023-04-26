@@ -1,4 +1,4 @@
-from fv.Mesh import Mesh
+from fv.fvMesh.Mesh import Mesh
 from solvers.SIMPLE import SIMPLE
 from utils.ReadFiles import ReadFiles
 from utils.WriteFiles import WriteFiles

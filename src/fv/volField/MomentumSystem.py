@@ -4,7 +4,7 @@ from fv.volField.MomentumSystemBCs import MomentumSystemBCs
 class MomentumSystem(MomentumSystemBCs):
 
     """
-    Class to discretise the Incompressible Navier-Stokes equation and the pressure laplacian to produce a linear system, using a finite volume discretisation approach.
+    Class to discretise the Incompressible Navier-Stokes equation to produce a linear system, using a finite volume discretisation approach.
     """
 
     def __init__(self, mesh, conv_scheme, viscosity, alpha_u):
@@ -66,16 +66,16 @@ class MomentumSystem(MomentumSystemBCs):
                 A[neighbour, neighbour] += fxO * FN_neighbour
 
                 # convective off-diag contributions
-                A[cell, neighbour] += (1-fxN) * FN_cell
-                A[neighbour, cell] += (1-fxO) * FN_neighbour
+                A[cell, neighbour] = (1-fxN) * FN_cell
+                A[neighbour, cell] = (1-fxO) * FN_neighbour
             else:
                 # convective diag contributions
                 A[cell, cell] += max(FN_cell, 0)
                 A[neighbour, neighbour] += max(FN_neighbour, 0)
 
                 # convective off-diag contributions
-                A[cell, neighbour] += min(FN_cell, 0)
-                A[neighbour, cell] += min(FN_neighbour, 0)
+                A[cell, neighbour] = min(FN_cell, 0)
+                A[neighbour, cell] = min(FN_neighbour, 0)
 
         # Add boundary contributions
         A, b = self.ConvMatMomentumBCs(A, b, F, veff, vel_comp, BC)
@@ -122,12 +122,12 @@ class MomentumSystem(MomentumSystemBCs):
             # diffusive off-diag contributions
             A[cell, neighbour] = veff[i] * face_mag / d_mag
             A[neighbour, cell] = veff[i] * face_mag / d_mag
-
+            
         A, b = self.DiffMatMomentumBCs(A, b, F, veff, vel_comp, BC)
-
+        
         return A, b
     
-    def momentum_UR(self, A, b, u):
+    def MomentumUR(self, A, b, u):
 
         """
         This function under-relaxes the momentum system.
@@ -169,9 +169,12 @@ class MomentumSystem(MomentumSystemBCs):
         Adiff, bdiff = self.DiffMatMomentum(F, veff, vel_comp, BC)
 
         A = Aconv - Adiff
-        b = bconv + bdiff
+        b = bconv - bdiff
 
-        A, b = self.momentum_UR(A, b, u)
+        #for i in range(len(A)):
+        #    print("diag: ", A[i,i], " off-diag: ", A[i,:].sum() - A[i,i])
+
+        A, b = self.MomentumUR(A, b, u)
 
         return A, b
     
