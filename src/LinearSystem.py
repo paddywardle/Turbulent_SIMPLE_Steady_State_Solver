@@ -85,6 +85,119 @@ class LinearSystem(LinearSystemBCs):
             A[neighbour, cell] -= veff[i] * face_mag / d_mag
 
         return A, b
+
+    def ConvMatMomentum(self, F, veff, vel_comp, BC):
+
+        """
+        This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system for the convection term.
+
+        Args:
+            A (np.array): momentum matrix
+            b (np.array): momentum RHS
+            F (np.array): flux array
+            veff (np.array): effective viscosity array
+        Returns:
+            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
+
+        """
+        
+        N = len(self.mesh.cells)
+        A = np.zeros((N, N))
+        b = np.zeros((N, 1)).flatten()
+        
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+
+            if neighbour == -1:
+                continue
+
+            face_area_vector = face_area_vectors[i]
+            face_centre = face_centres[i]
+            cell_centre = cell_centres[cell]
+            face_mag = np.linalg.norm(face_area_vector)
+
+            FN_cell = F[i]
+            FN_neighbour = -F[i]
+
+            neighbour_centre = cell_centres[neighbour]
+            d_mag = np.linalg.norm(cell_centre - neighbour_centre)
+
+            if self.conv_scheme == "centred":
+
+                fN = np.linalg.norm(neighbour_centre - face_centre)
+                fP = np.linalg.norm(cell_centre - face_centre)
+                fxO = fP/d_mag
+                fxN = fN/d_mag
+                
+                # convective diag contributions
+                A[cell, cell] += fxN * FN_cell
+                A[neighbour, neighbour] += fxO * FN_neighbour
+
+                # convective off-diag contributions
+                A[cell, neighbour] += (1-fxN) * FN_cell
+                A[neighbour, cell] += (1-fxO) * FN_neighbour
+            else:
+                # convective diag contributions
+                A[cell, cell] += max(FN_cell, 0)
+                A[neighbour, neighbour] += max(FN_neighbour, 0)
+
+                # convective off-diag contributions
+                A[cell, neighbour] += min(FN_cell, 0)
+                A[neighbour, cell] += min(FN_neighbour, 0)
+
+        # Add boundary contributions
+        A, b = self.ConvMatMomentumBCs(A, b, F, veff, vel_comp, BC)
+
+        return A, b
+
+    def DiffMatMomentum(self, F, veff, vel_comp, BC):
+
+        """
+        This function discretises the momentum equation to get the diagonal, off-diagonal and source contributions to the linear system for the diffusive term.
+
+        Args:
+            A (np.array): momentum matrix
+            b (np.array): momentum RHS
+            F (np.array): flux array
+            veff (np.array): effective viscosity array
+        Returns:
+            np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
+
+        """
+
+        N = len(self.mesh.cells)
+        A = np.zeros((N, N))
+        b = np.zeros((N, 1)).flatten()
+        
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+
+        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
+
+            if neighbour == -1:
+                continue
+
+            face_area_vector = face_area_vectors[i]
+            face_mag = np.linalg.norm(face_area_vector)
+
+            d_mag = np.linalg.norm(cell_centres[cell] - cell_centres[neighbour])
+
+            # diffusive diag contributions
+            A[cell, cell] -= veff[i] * face_mag / d_mag
+            A[neighbour, neighbour] -= veff[i] * face_mag / d_mag
+
+            # diffusive off-diag contributions
+            A[cell, neighbour] = veff[i] * face_mag / d_mag
+            A[neighbour, cell] = veff[i] * face_mag / d_mag
+
+        A, b = self.DiffMatMomentumBCs(A, b, F, veff, vel_comp, BC)
+
+        return A, b
     
     def momentum_UR(self, A, b, u):
 
@@ -124,16 +237,13 @@ class LinearSystem(LinearSystemBCs):
 
         """
 
-        N = len(self.mesh.cells)
+        Aconv, bconv = self.ConvMatMomentum(F, veff, vel_comp, BC)
+        Adiff, bdiff = self.DiffMatMomentum(F, veff, vel_comp, BC)
 
-        A = np.zeros((N, N))
-        b = np.zeros((N, 1)).flatten()
+        A = Aconv - Adiff
+        b = bconv + bdiff
 
-        A, b = self.momentum_mat(A, b, F, veff)
-
-        A, b = self.momentum_boundary_mat(A, b, F, veff, vel_comp, BC)
-
-        A, b = self.momentum_UR(A, b, u) 
+        A, b = self.momentum_UR(A, b, u)
 
         return A, b
     
