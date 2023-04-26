@@ -3,9 +3,10 @@ from scipy.sparse.linalg import bicg, bicgstab, cg, spilu
 from scipy.sparse import csc_matrix
 from LinearSystem import LinearSystem
 from TurbulenceModel import TurbulenceModel
+from fvMatrix import fvMatrix
 import sys
 
-class SIMPLE(LinearSystem, TurbulenceModel):
+class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
@@ -16,6 +17,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         self.writer = writer
         LinearSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
         TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
+        fvMatrix.__init__(self, mesh)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
     
@@ -32,15 +34,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
 
         """
 
-        if vel_comp == "u":
-            idx = 0
-        elif vel_comp == "v":
-            idx = 1
-        else:
-            idx = 2
-
-        uface = np.zeros((self.mesh.num_faces(), 1))
-
         cell_owner_neighbour = self.mesh.cell_owner_neighbour()
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
@@ -49,26 +42,25 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         # applies boundary condition if neighbour = -1
         # linearly interpolates velocity onto the face otherwise
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-            
-            if (neighbour == -1):
-                if i in self.mesh.boundaries['inlet']:
-                    uface[i] = BC['inlet'][idx]
-                elif i in self.mesh.boundaries['outlet']:
-                    uface[i] = u[owner]
-                elif i in self.mesh.boundaries['upperWall']:
-                    uface[i] = BC['upperWall'][idx]
-                elif i in self.mesh.boundaries['lowerWall']:
-                    uface[i] = BC['lowerWall'][idx]
+
+            for cmpt in range(noComponents):
+                
+                if (neighbour == -1):
+                    if i in self.mesh.boundaries['inlet']:
+                        uface = BC['inlet'][cmpt]
+                    elif i in self.mesh.boundaries['outlet']:
+                        uface = u[cmpt]
+                    elif i in self.mesh.boundaries['upperWall']:
+                        uface = BC['upperWall'][cmpt]
+                    elif i in self.mesh.boundaries['lowerWall']:
+                        uface = BC['lowerWall'][cmpt]
+                    else:
+                        uface = BC['frontAndBack'][cmpt]
                 else:
-                    uface[i] = BC['frontAndBack'][idx]
-                continue
-
-            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-            fx = fN_mag / PN_mag;
-
-            #uface[i] = u[owner] + (PF_mag * (u[neighbour]-u[cell])) / PN_mag
-            uface[i] = fx * u[owner] + (1 - fx) * u[neighbour]
+                    fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+                    PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+                    fx = fN_mag / PN_mag;
+                    uface = fx * u[owner] + (1 - fx) * u[neighbour]
 
         return uface
 
@@ -103,8 +95,53 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         F = np.asarray(F)
 
         return F
+
+    def face_flux(self, u, v, z, BC):
+
+        """
+        Function to calculate face flux
+
+        Args:
+            u (np.array): x velocity field
+            v (np.array): y velocity field
+            z (np.array): z velocity field
+        Returns:
+            F (np.array): face flux field
+
+        """
+
+        noComponents = 3
+        F = np.zeros((self.mesh.num_faces(),))
+        
+        face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
+
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
+
+            for cmpt in range(noComponents):
+                
+                if (neighbour == -1):
+                    if i in self.mesh.boundaries['inlet']:
+                        uface = BC['inlet'][cmpt]
+                    elif i in self.mesh.boundaries['outlet']:
+                        uface = u[cmpt]
+                    elif i in self.mesh.boundaries['upperWall']:
+                        uface = BC['upperWall'][cmpt]
+                    elif i in self.mesh.boundaries['lowerWall']:
+                        uface = BC['lowerWall'][cmpt]
+                    else:
+                        uface = BC['frontAndBack'][cmpt]
+                else:
+                    fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+                    PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
+                    fx = fN_mag / PN_mag;
+                    uface = fx * u[owner] + (1 - fx) * u[neighbour]
+
+                F[i] += uface * face_area_vectors[i][cmpt]
+
+        return F
     
-    def face_pressure(self, p_field, BC):
+    
+    def face_pressure(self, p_field, Ap, BC):
 
         """
         Function to calculate face pressure gradient.
@@ -166,7 +203,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         
         return raP_face
     
-    def face_flux_correction(self, F, raP, p_field, BC):
+    def face_flux_correction(self, F, Ap, p_field, BC):
 
         """
         Function to correct face flux field.
@@ -186,7 +223,7 @@ class SIMPLE(LinearSystem, TurbulenceModel):
         cell_centres = self.mesh.cell_centres()
         face_centres = self.mesh.face_centres()
         face_area_vectors = self.mesh.face_area_vectors()
-        delta_p_face = self.face_pressure(p_field, BC)
+        delta_p_face = self.face_pressure(p_field, Ap, BC)
         raP_face = self.face_raP(raP)
 
         # loops through owner neighbour pairs and corrected face fluxes
@@ -286,78 +323,6 @@ class SIMPLE(LinearSystem, TurbulenceModel):
             p_grad[cmpt] /= V
 
         return p_grad
-        
-    def raP(self, A):
-
-        """
-        Function to calculate reciprocal of momentum diagonal.
-
-        Args:
-            A (np.array): momentum matrix
-        Returns:
-            np.array: array of reciprocals
-        """
-        
-        raP = []
-        
-        V = self.mesh.cell_volumes()
-
-        for i in range(len(A)):
-
-            raP.append(1/A[i, i])
-
-        raP *= V
-
-        return np.array(raP) 
-    
-    def H(self, A, b, u):
-
-        """
-        Function to calculate H operator
-
-        Args:
-            A (np.array): momentum matrix
-            b (np.array): momentum source
-            u (np.array): velocity field
-        Returns:
-            H (np.array): H operator
-        """
-
-        H = b.copy()
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        V = self.mesh.cell_volumes()
-
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                continue
-            
-            H[owner] -= A[owner, neighbour] * u[neighbour]
-            H[neighbour] -= A[neighbour, owner] * u[owner]
-
-        H /= V
-            
-        return H
-    
-    def HbyA(self, A, b, u, raP):
-
-        """
-        Function to calculate HbyA operator to enforce divergence free velocity
-
-        Args:
-            A (np.array): momentum matrix
-            b (np.array): momentum source
-            u (np.array): velocity field
-            raP (np.array): reciprocal of diagonal coefficients
-        Returns:
-            HbyA (np.array): HbyA operator
-        """
-
-        HbyA = self.H(A, b, u)
-
-        HbyA *= raP
-
-        return HbyA
     
     def face_flux_check(self, F):
 
