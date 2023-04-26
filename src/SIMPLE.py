@@ -20,113 +20,6 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
         fvMatrix.__init__(self, mesh)
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
-
-    def face_flux(self, u, v, z, BC):
-
-        """
-        Function to calculate face flux
-
-        Args:
-            u (np.array): x velocity field
-            v (np.array): y velocity field
-            z (np.array): z velocity field
-        Returns:
-            F (np.array): face flux field
-
-        """
-
-        noComponents = 3
-        F = np.zeros((self.mesh.num_faces(),))
-        
-        face_area_vectors = np.squeeze(self.mesh.face_area_vectors())
-
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            for cmpt in range(noComponents):
-                
-                if (neighbour == -1):
-                    if i in self.mesh.boundaries['inlet']:
-                        uface = BC['inlet'][cmpt]
-                    elif i in self.mesh.boundaries['outlet']:
-                        uface = u[cmpt]
-                    elif i in self.mesh.boundaries['upperWall']:
-                        uface = BC['upperWall'][cmpt]
-                    elif i in self.mesh.boundaries['lowerWall']:
-                        uface = BC['lowerWall'][cmpt]
-                    else:
-                        uface = BC['frontAndBack'][cmpt]
-                else:
-                    fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-                    PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-                    fx = fN_mag / PN_mag;
-                    uface = fx * u[owner] + (1 - fx) * u[neighbour]
-
-                F[i] += uface * face_area_vectors[i][cmpt]
-
-        return F
-    
-    
-    def face_pressure(self, p_field, Ap, BC):
-
-        """
-        Function to calculate face pressure gradient.
-
-        Args:
-            p_field (np.array): pressure field
-        Returns:
-            delta_p_face (np.array): face pressure gradient
-
-        """
-
-        delta_p_face = np.zeros((self.mesh.num_faces(),))
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-
-        # loops through owner neighbour pairs
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-
-            # zero gradient boundary condition
-            if neighbour == -1:
-                if i in self.mesh.boundaries['outlet']:
-                    delta_p_face[i] = BC['outlet'][3] - p_field[cell]
-                else:
-                    delta_p_face[i] = 0
-                continue
-
-            delta_p_face[i] = (p_field[neighbour] - p_field[cell])
-        
-        return delta_p_face
-    
-    def face_raP(self, raP):
-
-        """
-        Function to calculate face value of momentum coefficients
-
-        Args:
-            raP (np.array): reciprocal of diagonal matrix coefficients
-        Returns:
-            raP_face (np.array): reciprocal face diagonal momentum values
-
-        """
-
-        raP_face = np.zeros((self.mesh.num_faces(),))
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        face_centres = self.mesh.face_centres()
-        cell_centres = self.mesh.cell_centres()
-
-        # loops through owner neighbour pairs and linearly interpolates ap onto the face
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                # zero gradient Neumann
-                raP_face[i] = raP[owner]
-                continue
-            
-            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-            fx = fN_mag / PN_mag;
-            raP_face[i] = fx * raP[owner] + (1 - fx) * raP[neighbour]
-        
-        return raP_face
     
     def face_flux_correction(self, F, Ap, p_field, BC):
 
@@ -189,7 +82,6 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
         v = v.copy()
         z = z.copy()
 
-        #delta_px, delta_py, delta_pz = self.cell_pressure_backward(p_field)
         gradP = self.gradP(p_field, BC)
 
         for cell in range(self.mesh.num_cells()):
@@ -203,76 +95,6 @@ class SIMPLE(LinearSystem, TurbulenceModel, fvMatrix):
             z[cell] -= gradP[2][cell] * raP[cell]
 
         return u, v, z
-
-    def gradP(self, p_field, BC):
-        
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
-        V = self.mesh.cell_volumes()
-        
-        p_grad = np.zeros((3, self.mesh.num_cells()))
-        
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                if i in self.mesh.boundaries['outlet']:
-                    p_face = BC["outlet"][3]
-                else:
-                    p_face = p_field[owner]
-
-                cmptGrad = 0
-                for cmptSf in range(3):
-                    p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
-                    cmptGrad += 1
-                    
-                continue
-
-            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-            fx = fN_mag / PN_mag;
-
-            p_face = fx * p_field[owner] + (1 - fx) * p_field[neighbour]
-
-            cmptGrad = 0
-            for cmptSf in range(3):
-                p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
-
-                p_grad[cmptGrad][neighbour] -= p_face * face_area_vectors[i][cmptSf]
-
-                cmptGrad += 1
-
-        for cmpt in range(3):
-            p_grad[cmpt] /= V
-
-        return p_grad
-    
-    def face_flux_check(self, F):
-
-        """
-        Function to check total flux for each cell
-
-        Args:
-            F (np.array): Face fluxes
-        Returns:
-            total_flux (np.array): total flux for each cell
-        """
-
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        total_flux = np.zeros((self.mesh.num_cells(), 1))
-
-        # loops through owner neighbour pairs and adds fluxes to owners and neighbours - skips neighbour if boundary
-        for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
-            
-            total_flux[cell] += F[i]
-
-            if neighbour == -1:
-                continue
-            total_flux[neighbour] -= F[i]
-
-        return total_flux.flatten()
 
     def residuals_combined(self, Ax, bx, Ay, by, u, v):
 
