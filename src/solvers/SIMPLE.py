@@ -46,10 +46,6 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
 
         for cell in range(self.mesh.num_cells()):
 
-            #u[cell] -= delta_px[cell] * raP[cell]# * cell_vols[cell]
-            #v[cell] -= delta_py[cell] * raP[cell]# * cell_vols[cell]
-            #z[cell] -= delta_pz[cell] * raP[cell]# * cell_vols[cell]
-
             u[cell] -= gradP[0][cell] * raP[cell]
             v[cell] -= gradP[1][cell] * raP[cell]
             z[cell] -= gradP[2][cell] * raP[cell]
@@ -129,17 +125,14 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         p = p.copy()
         k = k.copy()
         e = e.copy()
-        
+
         # Project viscosity onto faces
         veff_face = self.veff_face(veff)
-
+        
         # Momentum Predictor
         Ax, bx = self.MomentumDisc(u, F, veff_face, 'u', BC)
         Ay, by = self.MomentumDisc(v, F, veff_face, 'v', BC)
         Az, bz = self.MomentumDisc(z, F, veff_face, 'w', BC)
-        
-        # get momentum coefficients for report
-        num_cells = self.mesh.num_cells()
 
         #uplus1, exitcode = bicgstab(Ax, bx, x0=u, maxiter=200, tol=1e-5)
         #vplus1, exitcode = bicgstab(Ay, by, x0=v, maxiter=200, tol=1e-5)
@@ -162,7 +155,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
-
+        Fpre2 = self.face_flux(uplus1, vplus1, zplus1, BC)
         # Pressure corrector
         Ap, bp = self.PressureDisc(Fpre, raP_face, BC)
 
@@ -181,9 +174,9 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field, BC)
 
         # turbulence systems
-        Ak, bk = self.k_disc(k, e, F, BC)
+        Ak, bk = self.KDisc(k, e, F, BC)
         k_field, exitcode = bicgstab(Ak, bk, x0=k, maxiter=200, tol=1e-5)
-        Ae, be = self.e_disc(k, e, F, BC)
+        Ae, be = self.EDisc(k, e, F, BC)
         e_field, exitcode = bicgstab(Ae, be, x0=e, maxiter=200, tol=1e-5)
 
         # recalculating turbulent parameters
@@ -192,7 +185,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
+        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
     def iterate(self, u, v, w, p, k, e, BC, tol=1e-6, maxIts=100):
     

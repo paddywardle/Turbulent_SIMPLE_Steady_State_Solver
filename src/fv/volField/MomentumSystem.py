@@ -74,8 +74,8 @@ class MomentumSystem(MomentumSystemBCs):
                 A[neighbour, neighbour] += max(FN_neighbour, 0)
 
                 # convective off-diag contributions
-                A[cell, neighbour] = min(FN_cell, 0)
-                A[neighbour, cell] = min(FN_neighbour, 0)
+                A[cell, neighbour] += min(FN_cell, 0)
+                A[neighbour, cell] += min(FN_neighbour, 0)
 
         # Add boundary contributions
         A, b = self.ConvMatMomentumBCs(A, b, F, veff, vel_comp, BC)
@@ -120,8 +120,8 @@ class MomentumSystem(MomentumSystemBCs):
             A[neighbour, neighbour] -= veff[i] * face_mag / d_mag
 
             # diffusive off-diag contributions
-            A[cell, neighbour] = veff[i] * face_mag / d_mag
-            A[neighbour, cell] = veff[i] * face_mag / d_mag
+            A[cell, neighbour] += veff[i] * face_mag / d_mag
+            A[neighbour, cell] += veff[i] * face_mag / d_mag
             
         A, b = self.DiffMatMomentumBCs(A, b, F, veff, vel_comp, BC)
         
@@ -144,9 +144,12 @@ class MomentumSystem(MomentumSystemBCs):
         A = A.copy()
         b = b.copy()
 
+        diagold = np.diag(A).copy()
+
         for i in range(self.mesh.num_cells()):
             A[i, i] /= self.alpha_u
-            b[i] += ((1-self.alpha_u)/self.alpha_u) * u[i] * A[i, i]
+            
+        b += (np.diag(A) - diagold) * u
 
         return A, b
     
@@ -171,44 +174,6 @@ class MomentumSystem(MomentumSystemBCs):
         A = Aconv - Adiff
         b = bconv - bdiff
 
-        #for i in range(len(A)):
-        #    print("diag: ", A[i,i], " off-diag: ", A[i,:].sum() - A[i,i])
-
         A, b = self.MomentumUR(A, b, u)
 
         return A, b
-    
-    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=1000):
-
-        """
-        This function uses the Gauss-Seidel algorithm to solve the linear system.
-
-        Args:
-            A (np.array): array containing the diagonal and off-diagonal contributions to the linear system.
-            b (np.array): array containing the source contributions to the linear system.
-            tol (float): tolerance for algorithm convergence.
-            maxIts (int): maximum number of iterations that algorithm should run for.
-        Returns:
-            np.array: solution from Gauss-Seidel algorithm.
-
-        """
-        for k in range(maxIts):
-            # forward sweep
-            for i in range(A.shape[0]):
-                u_new = b[i]
-                for j in range(A.shape[0]):
-                    if (j != i):
-                        u_new -= A[i,j] * u[j]
-                u[i] = u_new / A[i,i]
-            # backward sweep
-            for i in reversed(range(A.shape[0])):
-                u_new = b[i]
-                for j in reversed(range(A.shape[0])):
-                    if (j != i):
-                        u_new -= A[i,j] * u[j]
-                u[i] = u_new / A[i,i]
-            res = np.sum(b - np.matmul(A, u))
-            if res < tol:
-                break
-
-        return u

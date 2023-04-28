@@ -81,6 +81,6 @@ class Laplacian(LaplacianBCs):
         Ap, bp = self.LaplacianMatPressure(F, raP_face, BC)
 
         # set reference point
-        Ap[0,0] *= 1.1
+        #Ap[0,0] *= 1.1
 
         return Ap, bp

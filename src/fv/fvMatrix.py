@@ -52,8 +52,9 @@ class fvMatrix():
         V = self.mesh.cell_volumes()
 
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
+            
             if neighbour == -1:
+                #H[owner] = A[owner, owner] * BC
                 continue
             
             H[owner] -= A[owner, neighbour] * u[neighbour]
@@ -169,7 +170,7 @@ class fvMatrix():
                 continue
 
             #delta_p_face[i] = (p_field[neighbour] - p_field[cell])
-            delta_p_face[i] += Ap[owner, neighbour] * p_field[neighbour] - Ap[neighbour, owner] * p_field[owner]
+            delta_p_face[i] = Ap[owner, neighbour] * p_field[neighbour] - Ap[neighbour, owner] * p_field[owner]
         
         return delta_p_face
     
@@ -231,9 +232,9 @@ class fvMatrix():
                     
                 continue
 
-            fN_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            PN_mag = np.linalg.norm(cell_centres[neighbour] - cell_centres[owner])
-            fx = fN_mag / PN_mag;
+            Nf_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            Pf_mag = np.linalg.norm(face_centres[i] - cell_centres[owner])
+            fx = Nf_mag / (Pf_mag + Nf_mag)
 
             p_face = fx * p_field[owner] + (1 - fx) * p_field[neighbour]
 
