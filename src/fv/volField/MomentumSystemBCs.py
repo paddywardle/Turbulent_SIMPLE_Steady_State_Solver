@@ -51,16 +51,16 @@ class MomentumSystemBCs:
                 d_mag = np.linalg.norm(cell_centres[cell] - face_centres[i])
 
                 if i in self.mesh.boundaries['inlet']:
-                    b[cell] += FN_cell * BC['inlet'][idx] # convection
+                    b[cell] -= FN_cell * BC['inlet'][idx] # convection
                 elif i in self.mesh.boundaries['outlet']:
                     A[cell, cell] += FN_cell # convection
-                    b[cell] += FN_cell * d_mag * BC['outlet'][idx] # convection
+                    b[cell] -= FN_cell * d_mag * BC['outlet'][idx] # convection
                 elif i in self.mesh.boundaries['upperWall']:
-                    b[cell] += FN_cell * BC['upperWall'][idx]
+                    b[cell] -= FN_cell * BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    b[cell] += FN_cell * BC['lowerWall'][idx]
+                    b[cell] -= FN_cell * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    b[cell] += FN_cell * BC['frontAndBack'][idx]
+                    b[cell] -= FN_cell * BC['frontAndBack'][idx]
         
         return A, b
 
@@ -109,7 +109,7 @@ class MomentumSystemBCs:
                     A[cell, cell] -= veff[i] * face_mag / d_mag # diffusion
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['inlet'][idx] # diffusion
                 elif i in self.mesh.boundaries['outlet']:
-                    b[cell] -= veff[i] * face_mag * BC['outlet'][idx] # diffusion
+                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['outlet'][idx] # diffusion
                 elif i in self.mesh.boundaries['upperWall']:
                     A[cell, cell] -= veff[i] * face_mag / d_mag
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['upperWall'][idx]

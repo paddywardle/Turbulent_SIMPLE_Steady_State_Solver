@@ -134,9 +134,9 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         Ay, by = self.MomentumDisc(v, F, veff_face, 'v', BC)
         Az, bz = self.MomentumDisc(z, F, veff_face, 'w', BC)
 
-        #uplus1, exitcode = bicgstab(Ax, bx, x0=u, maxiter=200, tol=1e-5)
-        #vplus1, exitcode = bicgstab(Ay, by, x0=v, maxiter=200, tol=1e-5)
-        #zplus1, exitcode = bicgstab(Az, bz, x0=z, maxiter=200, tol=1e-5)
+        #uplus1, exitcode = bicgstab(Ax, bx, x0=u, tol=1e-7)
+        #vplus1, exitcode = bicgstab(Ay, by, x0=v, tol=1e-7)
+        #zplus1, exitcode = bicgstab(Az, bz, x0=z, tol=1e-7)
 
         uplus1 = np.linalg.solve(Ax, bx)
         vplus1 = np.linalg.solve(Ay, by)
@@ -155,11 +155,10 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
-        Fpre2 = self.face_flux(uplus1, vplus1, zplus1, BC)
         # Pressure corrector
         Ap, bp = self.PressureDisc(Fpre, raP_face, BC)
 
-        #p_field, exitcode = bicgstab(Ap, bp, x0=p, maxiter=200, tol=1e-6)
+        #p_field, exitcode = bicgstab(Ap, bp, x0=p, tol=1e-7)
         p_field = np.linalg.solve(Ap, bp)
         
         res_pressure = [self.residual(Ap, bp, p), self.residual(Ap, bp, p_field)]
@@ -174,10 +173,11 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field, BC)
 
         # turbulence systems
-        Ak, bk = self.KDisc(k, e, F, BC)
-        k_field, exitcode = bicgstab(Ak, bk, x0=k, maxiter=200, tol=1e-5)
-        Ae, be = self.EDisc(k, e, F, BC)
-        e_field, exitcode = bicgstab(Ae, be, x0=e, maxiter=200, tol=1e-5)
+        Ak, bk = self.KDisc(k, e, Fpre, veff_face, BC)
+        k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-7)
+        
+        Ae, be = self.EDisc(k, e, Fpre, veff_face, BC)
+        e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-7)
 
         # recalculating turbulent parameters
         veff = self.EffectiveVisc(k, e, 1)

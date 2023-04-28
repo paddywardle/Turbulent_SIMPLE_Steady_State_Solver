@@ -186,11 +186,11 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         return A, b
     
-    def KDisc(self, k, e, F, BC):
+    def KDisc(self, k, e, F, veff_face, BC):
         
-        veffk = self.EffectiveVisc(k, e, self.sigmak)
+        #veffk = self.EffectiveVisc(k, e, self.sigmak)
 
-        veff_face = self.veff_face(veffk)
+        #veff_face = self.veff_face(veffk)
 
         Aconv, bconv = self.ConvMatKE(F, veff_face, BC)
         Adiff, bdiff = self.DiffMatKE(F, veff_face, BC)
@@ -202,11 +202,11 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         return A, b
 
-    def EDisc(self, k, e, F, BC):
+    def EDisc(self, k, e, F, veff_face, BC):
         
-        veffe = self.EffectiveVisc(k, e, self.sigmaEps)
+        #veffe = self.EffectiveVisc(k, e, self.sigmaEps)
 
-        veff_face = self.veff_face(veffe)
+        #veff_face = self.veff_face(veffe)
 
         Aconv, bconv = self.ConvMatKE(F, veff_face, BC)
         Adiff, bdiff = self.DiffMatKE(F, veff_face, BC)
