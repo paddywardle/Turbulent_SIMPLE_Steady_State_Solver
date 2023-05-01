@@ -1,0 +1,33 @@
+import numpy as np
+
+class Tensor():
+
+    def __init__(self):
+
+        pass
+
+    def twoSymm(self, T):
+
+        Tt = T.T
+
+        twoSymm = T + Tt
+
+        return twoSymm
+
+    def Symm(self, T):
+
+        twoSymm = self.twoSymm(T)
+
+        Symm = np.zeros_like(twoSymm)
+
+        Symm[:, 0] = self.diag(twoSymm, 0)
+        Symm[:, 3] = self.diag(twoSymm, 3)
+        Symm[:, 6] = self.diag(twoSymm, 6)
+        return Symm
+
+    def Diag(self, T, idx):
+
+        return 2 * T[:, idx]
+        
+
+    
