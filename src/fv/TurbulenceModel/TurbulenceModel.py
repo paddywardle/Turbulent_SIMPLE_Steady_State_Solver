@@ -1,7 +1,9 @@
 import numpy as np
 from fv.TurbulenceModel.TurbulenceModelBCs import TurbulenceModelBCs
+from fv.scalarField.Grad import Grad
+from fv.fvMatrix import fvMatrix
 
-class TurbulenceModel(TurbulenceModelBCs):
+class TurbulenceModel(TurbulenceModelBCs, fvMatrix):
 
     """
     Class to discretise the k-e turbulence model equations to produce a linear system, using a finite volume discretisation approach.
@@ -19,45 +21,6 @@ class TurbulenceModel(TurbulenceModelBCs):
         self.C3 = C3
         self.sigmak = sigmak
         self.sigmaEps = sigmaEps
-
-    def TurbulentVisc(self, k_arr, e_arr):
-
-        vt = np.zeros((len(self.mesh.cells),))
-
-        for i, (k, e) in enumerate(zip(k_arr, e_arr)):
-
-            vt[i] = self.Cmu * ((k**2)/e)
-
-        return vt.flatten()
-
-    def EffectiveVisc(self, k_arr, e_arr, sigma):
-
-        veff = self.viscosity * np.ones((self.mesh.num_cells(),))# + self.TurbulentVisc(k_arr, e_arr) / sigma
-
-        return veff.flatten()
-
-    def veff_face(self, veff):
-
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
-
-        veff_face = np.zeros((self.mesh.num_faces(),))
-
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                # going to zero gradient for now <- CHECK THIS
-                veff_face[i] = veff[owner]
-                continue
-
-            Nf_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            Pf_mag = np.linalg.norm(face_centres[i] - cell_centres[owner])
-            fx = Nf_mag / (Pf_mag + Nf_mag)
-            veff_face[i] = fx * veff[owner] + (1 - fx) * veff[neighbour]
-
-        return veff_face
 
     def ConvMatKE(self, F, veff, BC):
 
@@ -186,32 +149,32 @@ class TurbulenceModel(TurbulenceModelBCs):
 
         return A, b
     
-    def KDisc(self, k, e, F, veff_face, BC):
+    def KDisc(self, k, e, F, veffk, BC):
         
         #veffk = self.EffectiveVisc(k, e, self.sigmak)
 
-        #veff_face = self.veff_face(veffk)
+        veff_face = self.veff_face(veffk)
 
         Aconv, bconv = self.ConvMatKE(F, veff_face, BC)
         Adiff, bdiff = self.DiffMatKE(F, veff_face, BC)
 
-        A = Aconv - bdiff
+        A = Aconv - Adiff
         b = bconv - bdiff
 
         A, b = self.KEUR(A, b, k)
 
         return A, b
 
-    def EDisc(self, k, e, F, veff_face, BC):
+    def EDisc(self, k, e, F, veffe, BC):
         
         #veffe = self.EffectiveVisc(k, e, self.sigmaEps)
 
-        #veff_face = self.veff_face(veffe)
+        veff_face = self.veff_face(veffe)
 
         Aconv, bconv = self.ConvMatKE(F, veff_face, BC)
         Adiff, bdiff = self.DiffMatKE(F, veff_face, BC)
 
-        A = Aconv - bdiff
+        A = Aconv - Adiff
         b = bconv - bdiff
 
         A, b = self.KEUR(A, b, e)

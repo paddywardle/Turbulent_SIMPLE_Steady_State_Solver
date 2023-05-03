@@ -45,7 +45,7 @@ class TurbulenceModelBCs:
 
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
-            if cell_owner_neighbour[i][1] == -1:
+            if neighbour == -1:
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
@@ -61,14 +61,11 @@ class TurbulenceModelBCs:
                     A[cell, cell] += FN_cell # CHECK THIS
                     b[cell] -= FN_cell * d_mag * BC['outlet'][4]
                 elif i in self.mesh.boundaries['upperWall']:
-                    A[cell, cell] += FN_cell # CHECK THIS
-                    b[cell] -= FN_cell * d_mag * BC['upperWall'][4]
+                    b[cell] -= FN_cell * BC['upperWall'][4]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    A[cell, cell] += FN_cell # CHECK THIS
-                    b[cell] -= FN_cell * d_mag * BC['lowerWall'][4]
-                else:
-                    A[cell, cell] += FN_cell # CHECK THIS
-                    b[cell] -= FN_cell * d_mag * BC['frontAndBack'][4]
+                    b[cell] -= FN_cell * BC['lowerWall'][4]
+                elif i in self.mesh.boundaries['frontAndBack']:
+                    b[cell] -= FN_cell * BC['frontAndBack'][4]
         
         return A, b
 
@@ -98,7 +95,7 @@ class TurbulenceModelBCs:
 
         for i, (cell, neighbour) in enumerate(cell_owner_neighbour):
 
-            if cell_owner_neighbour[i][1] == -1:
+            if neighbour == -1:
                 face_area_vector = face_area_vectors[i]
                 face_centre = face_centres[i]
                 cell_centre = cell_centres[cell]
@@ -113,10 +110,13 @@ class TurbulenceModelBCs:
                 elif i in self.mesh.boundaries['outlet']:
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['outlet'][5]
                 elif i in self.mesh.boundaries['upperWall']:
-                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['upperWall'][5]
+                    A[cell, cell] -= veff[i] * face_mag / d_mag
+                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['outlet'][5]
                 elif i in self.mesh.boundaries['lowerWall']:
+                    A[cell, cell] -= veff[i] * face_mag / d_mag
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['lowerWall'][5]
-                else:
+                elif i in self.mesh.boundaries['frontAndBack']:
+                    A[cell, cell] -= veff[i] * face_mag / d_mag
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][5]
-        
+                    
         return A, b
