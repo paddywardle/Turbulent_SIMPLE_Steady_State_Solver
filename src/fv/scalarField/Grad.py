@@ -68,23 +68,22 @@ class Grad():
 
         for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
 
-            uface = np.empty(noComponents)
             cmptGrad = 0
 
             for cmpt in range(noComponents):
 
                 if neighbour == -1:
                     if i in self.mesh.boundaries['inlet']:
-                        uface[cmpt] = BC['inlet'][cmpt]
+                        uface = BC['inlet'][cmpt]
                     elif i in self.mesh.boundaries['outlet']:
-                        uface[cmpt] = U[cmpt][owner]
+                        uface = U[cmpt][owner]
                     elif i in self.mesh.boundaries['upperWall']:
-                        uface[cmpt] = BC['upperWall'][cmpt]
+                        uface = BC['upperWall'][cmpt]
                     elif i in self.mesh.boundaries['lowerWall']:
-                        uface[cmpt] = BC['lowerWall'][cmpt]
+                        uface = BC['lowerWall'][cmpt]
                     else:
-                        uface[cmpt] = BC['frontAndBack'][cmpt]
-                        
+                        uface = BC['frontAndBack'][cmpt]
+
                     for cmptSf in range(3):
                         U_grad[cmptGrad][owner] += uface * face_area_vectors[i][cmptSf]
                         cmptGrad += 1
