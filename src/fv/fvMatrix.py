@@ -1,7 +1,8 @@
 import numpy as np
 import sys
+from Tensor.Tensor import Tensor
 
-class fvMatrix():
+class fvMatrix(Tensor):
 
     """
     Class to hold methods to apply to finite volume matrices.
@@ -205,51 +206,6 @@ class fvMatrix():
             raP_face[i] = fx * raP[owner] + (1 - fx) * raP[neighbour]
         
         return raP_face
-
-    def gradP(self, p_field, BC):
-        
-        face_area_vectors = self.mesh.face_area_vectors()
-        cell_centres = self.mesh.cell_centres()
-        face_centres = self.mesh.face_centres()
-        V = self.mesh.cell_volumes()
-        
-        p_grad = np.zeros((3, self.mesh.num_cells()))
-        
-        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
-
-        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
-
-            if neighbour == -1:
-                if i in self.mesh.boundaries['outlet']:
-                    p_face = BC["outlet"][3]
-                else:
-                    p_face = p_field[owner]
-
-                cmptGrad = 0
-                for cmptSf in range(3):
-                    p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
-                    cmptGrad += 1
-                    
-                continue
-
-            Nf_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
-            Pf_mag = np.linalg.norm(face_centres[i] - cell_centres[owner])
-            fx = Nf_mag / (Pf_mag + Nf_mag)
-
-            p_face = fx * p_field[owner] + (1 - fx) * p_field[neighbour]
-
-            cmptGrad = 0
-            for cmptSf in range(3):
-                p_grad[cmptGrad][owner] += p_face * face_area_vectors[i][cmptSf]
-
-                p_grad[cmptGrad][neighbour] -= p_face * face_area_vectors[i][cmptSf]
-
-                cmptGrad += 1
-
-        for cmpt in range(3):
-            p_grad[cmpt] /= V
-
-        return p_grad
     
     def face_flux_check(self, F):
 
@@ -275,3 +231,52 @@ class fvMatrix():
             total_flux[neighbour] -= F[i]
 
         return total_flux.flatten()
+
+    def TurbulentVisc(self, k_arr, e_arr):
+
+        vt = np.zeros(self.mesh.num_cells(),)
+
+        for i, (k, e) in enumerate(zip(k_arr, e_arr)):
+
+            vt[i] = self.Cmu * ((k**2)/e)
+
+        return vt.flatten()
+
+    def EffectiveVisc(self, k_arr, e_arr, sigma):
+
+        veff = self.viscosity * np.ones((self.mesh.num_cells(),))# + self.TurbulentVisc(k_arr, e_arr) / sigma
+
+        return veff.flatten()
+
+    def veff_face(self, veff):
+
+        cell_owner_neighbour = self.mesh.cell_owner_neighbour()
+        face_area_vectors = self.mesh.face_area_vectors()
+        cell_centres = self.mesh.cell_centres()
+        face_centres = self.mesh.face_centres()
+
+        veff_face = np.zeros((self.mesh.num_faces(),))
+
+        for i, (owner, neighbour) in enumerate(cell_owner_neighbour):
+
+            if neighbour == -1:
+                # going to zero gradient for now <- CHECK THIS
+                veff_face[i] = veff[owner]
+                # if i in self.mesh.boundaries['inlet']:
+                #     veff_face[i] = veff[owner]
+                # elif i in self.mesh.boundaries['outlet']:
+                #     veff_face[i] = veff[owner]
+                # elif i in self.mesh.boundaries['upperWall']:
+                #     veff_face[i] = 0
+                # elif i in self.mesh.boundaries['lowerWall']:
+                #     veff_face[i] = 0
+                # elif i in self.mesh.boundaries['frontAndBack']:
+                #     veff_face[i] = 0
+                continue
+
+            Nf_mag = np.linalg.norm(face_centres[i] - cell_centres[neighbour])
+            Pf_mag = np.linalg.norm(face_centres[i] - cell_centres[owner])
+            fx = Nf_mag / (Pf_mag + Nf_mag)
+            veff_face[i] = fx * veff[owner] + (1 - fx) * veff[neighbour]
+
+        return veff_face
