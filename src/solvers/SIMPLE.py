@@ -5,10 +5,12 @@ import sys
 
 from fv.volField.MomentumSystem import MomentumSystem
 from fv.scalarField.Laplacian import Laplacian
+from fv.scalarField.Grad import Grad
 from fv.TurbulenceModel.TurbulenceModel import TurbulenceModel
 from fv.fvMatrix import fvMatrix
+from Tensor.Tensor import Tensor
 
-class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
+class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
@@ -89,7 +91,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, p, k, e, veff, F, BC):
+    def SIMPLE_loop(self, u, v, z, p, k, e, nu, F, BC):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -127,12 +129,14 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         e = e.copy()
 
         # Project viscosity onto faces
-        veff_face = self.veff_face(veff)
+        nut = self.TurbulentVisc(k, e)
+        nueff = nu  + nut
+        nueff_face = self.veff_face(nueff)
         
         # Momentum Predictor
-        Ax, bx = self.MomentumDisc(u, F, veff_face, 'u', BC)
-        Ay, by = self.MomentumDisc(v, F, veff_face, 'v', BC)
-        Az, bz = self.MomentumDisc(z, F, veff_face, 'w', BC)
+        Ax, bx = self.MomentumDisc(u, F, nueff_face, 'u', BC)
+        Ay, by = self.MomentumDisc(v, F, nueff_face, 'v', BC)
+        Az, bz = self.MomentumDisc(z, F, nueff_face, 'w', BC)
 
         #uplus1, exitcode = bicgstab(Ax, bx, x0=u, tol=1e-7)
         #vplus1, exitcode = bicgstab(Ay, by, x0=v, tol=1e-7)
@@ -154,7 +158,9 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
         HbyAy = self.HbyA(Ay, by, vplus1, raP) # v velocity
         HbyAz = self.HbyA(Az, bz, zplus1, raP) # z velocity
 
+        # Face flux correction
         Fpre = self.face_flux(HbyAx, HbyAy, HbyAz, BC)
+        
         # Pressure corrector
         Ap, bp = self.PressureDisc(Fpre, raP_face, BC)
 
@@ -171,21 +177,27 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix):
 
         # Cell-centred correction
         uplus1, vplus1, zplus1 = self.cell_centre_correction(raP, uplus1, vplus1, zplus1, p_field, BC)
-
-        # turbulence systems
-        Ak, bk = self.KDisc(k, e, Fpre, veff_face, BC)
-        k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-7)
         
-        Ae, be = self.EDisc(k, e, Fpre, veff_face, BC)
-        e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-7)
+        # turbulence systems
+        gradU = self.gradU(uplus1, vplus1, zplus1, BC)
+        G = nut * self.DoubleInner(self.Symm(gradU), self.Symm(gradU))
 
-        # recalculating turbulent parameters
-        veff = self.EffectiveVisc(k, e, 1)
+        nueffk = nu + nut / self.sigmak
+        Ak, bk = self.KDisc(k, e, Fpre, nueffk, BC)
+        bk += (G - e) * self.mesh.cell_volumes()
+        #k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-3)
+        k_field = np.linalg.solve(Ak, bk)
+
+        nueffEps = nu + nut / self.sigmaEps
+        Ae, be = self.EDisc(k, e, Fpre, nueffEps, BC)
+        be += (self.C1 * G * (e / k) - self.C2 * (np.square(e) / k)) * self.mesh.cell_volumes()
+        #e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-3)
+        e_field = np.linalg.solve(Ae, be)
 
         #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, p_field, k_field, e_field, veff, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
+        return uplus1, vplus1, zplus1, p_field, k_field, e_field, nueff, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
     def iterate(self, u, v, w, p, k, e, BC, tol=1e-6, maxIts=100):
     
