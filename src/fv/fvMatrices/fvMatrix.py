@@ -280,3 +280,30 @@ class fvMatrix(Tensor):
             veff_face[i] = fx * veff[owner] + (1 - fx) * veff[neighbour]
 
         return veff_face
+
+    def relax(self, A, b, x):
+
+        """
+        Implicit under-relaxation.
+
+        Args:
+            A (np.array): matrix
+            b (np.array): RHS
+            x (np.array): value array
+        Returns:
+            np.array: implicitly relaxed linear system
+
+        """
+
+
+        A = A.copy()
+        b = b.copy()
+
+        diagold = np.diag(A).copy()
+        
+        for i in range(len(A)):
+            A[i, i] /= self.alpha_u
+
+        b += (np.diag(A) - diagold) * x
+
+        return A, b

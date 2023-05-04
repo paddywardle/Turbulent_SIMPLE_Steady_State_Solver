@@ -3,11 +3,11 @@ from scipy.sparse.linalg import bicg, bicgstab, cg, spilu
 from scipy.sparse import csc_matrix
 import sys
 
-from fv.volField.MomentumSystem import MomentumSystem
-from fv.scalarField.Laplacian import Laplacian
-from fv.scalarField.Grad import Grad
+from fv.MomentumEq.MomentumSystem import MomentumSystem
+from fv.PressureLaplacian.Laplacian import Laplacian
+from fv.fvMatrices.fvc.Grad import Grad
 from fv.TurbulenceModel.TurbulenceModel import TurbulenceModel
-from fv.fvMatrix import fvMatrix
+from fv.fvMatrices.fvMatrix import fvMatrix
 from Tensor.Tensor import Tensor
 
 class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor):
@@ -19,10 +19,11 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
     def __init__(self, writer, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
         
         self.writer = writer
-        MomentumSystem.__init__(self, mesh, conv_scheme, viscosity, alpha_u)
-        Laplacian.__init__(self, mesh, conv_scheme)
-        TurbulenceModel.__init__(self, mesh, conv_scheme, viscosity, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
+        #MomentumSystem.__init__(self, mesh, conv_scheme, alpha_u)
+        #Laplacian.__init__(self, mesh)
+        TurbulenceModel.__init__(self, mesh, conv_scheme, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         fvMatrix.__init__(self, mesh)
+        self.viscosity = viscosity
         self.alpha_u = alpha_u
         self.alpha_p = alpha_p
 
@@ -131,6 +132,8 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         # Project viscosity onto faces
         nut = self.TurbulentVisc(k, e)
         nueff = nu  + nut
+        nueffk = nu + nut / self.sigmak
+        nueffEps = nu + nut / self.sigmaEps
         nueff_face = self.veff_face(nueff)
         
         # Momentum Predictor
@@ -182,15 +185,11 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         gradU = self.gradU(uplus1, vplus1, zplus1, BC)
         G = nut * self.DoubleInner(self.Symm(gradU), self.Symm(gradU))
 
-        nueffk = nu + nut / self.sigmak
-        Ak, bk = self.KDisc(k, e, Fpre, nueffk, BC)
-        bk += (G - e) * self.mesh.cell_volumes()
+        Ak, bk = self.KDisc(k, e, Fpre, nueffk, G, BC)
         #k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-3)
         k_field = np.linalg.solve(Ak, bk)
 
-        nueffEps = nu + nut / self.sigmaEps
-        Ae, be = self.EDisc(k, e, Fpre, nueffEps, BC)
-        be += (self.C1 * G * (e / k) - self.C2 * (np.square(e) / k)) * self.mesh.cell_volumes()
+        Ae, be = self.EDisc(k, e, Fpre, nueffEps, G, BC)
         #e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-3)
         e_field = np.linalg.solve(Ae, be)
 

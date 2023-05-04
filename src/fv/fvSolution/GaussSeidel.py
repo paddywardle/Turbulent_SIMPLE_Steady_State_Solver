@@ -1,8 +1,8 @@
 import numpy as np
 
-class LinearSolvers():
+class GaussSeidel():
 
-    def gauss_seidel(self, A, b, u, tol=1e-6, maxIts=1000):
+    def gauss(self, A, b, u, tol=1e-6, maxIts=1000):
 
         """
         This function uses the Gauss-Seidel algorithm to solve the linear system.

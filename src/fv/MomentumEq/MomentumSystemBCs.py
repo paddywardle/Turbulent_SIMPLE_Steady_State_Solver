@@ -13,7 +13,7 @@ class MomentumSystemBCs:
         self.viscosity = viscosity
         self.alpha_u = alpha_u
 
-    def ConvMatMomentumBCs(self, A, b, F, veff, vel_comp, BC):
+    def ConvMatMomentumBCs(self, A, b, F, vel_comp, BC):
 
         """
         This function discretises the momentum equation boundaries to get the diagonal, off-diagonal and source contributions to the linear system for the convective term.

@@ -3,6 +3,7 @@ Results/*
 InitialConds/*
 MeshFiles/*
 OpenFOAM_Headers/*
+*~
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
