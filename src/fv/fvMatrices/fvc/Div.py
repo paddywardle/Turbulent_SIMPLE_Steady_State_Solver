@@ -22,6 +22,8 @@ class Div():
             ssf[owner] += F[i]
             ssf[neighbour] -= F[i]
 
+        #ssf /= V
+
         return ssf
 
         
