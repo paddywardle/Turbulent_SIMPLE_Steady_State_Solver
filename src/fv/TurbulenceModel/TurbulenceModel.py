@@ -1,6 +1,6 @@
 import numpy as np
 from fv.TurbulenceModel.TurbulenceModelBCs import TurbulenceModelBCs
-from fv.fvMatrices.fvc.SuSp import SuSp
+from fv.fvMatrices.fvm.SuSp import SuSp
 from fv.fvMatrices.fvc.Grad import Grad
 from fv.fvMatrices.fvc.Div import Div as fvcDiv
 from fv.fvMatrices.fvm.Div import Div as fvmDiv
@@ -33,11 +33,10 @@ class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
         Aconv, bconv = self.ConvMatKEBCs(Aconv, bconv, F, BC, 4)
         Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, veff_face, BC, 4)
         
-        ASuSp, bSuSp = self.SuSp(-self.fvcDiv(F), k)
-        ASp, bSp = self.Sp(e/k)
+        ASp, bSp = self.Sp(e/k, k)
 
-        A = Aconv - Adiff + ASuSp + ASp # should ASp be + or -
-        b = bconv - bdiff + bSuSp - bSp # check signs
+        A = Aconv - Adiff + ASp # should ASp be + or -
+        b = bconv - bdiff - bSp # check signs
         b += G * self.mesh.cell_volumes()
 
         A, b = self.relax(A, b, k)
@@ -53,11 +52,10 @@ class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
         Aconv, bconv = self.ConvMatKEBCs(Aconv, bconv, F, BC, 5)
         Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, veff_face, BC, 5)
         
-        ASuSp, bSuSp = self.SuSp(-self.fvcDiv(F), e)
-        ASp, bSp = self.Sp(self.C2 * e/k)
+        ASp, bSp = self.Sp(self.C2 * e/k, e)
 
-        A = Aconv - Adiff + ASuSp + ASp # should ASp be + or -
-        b = bconv - bdiff + bSuSp - bSp # check signs
+        A = Aconv - Adiff + ASp # should ASp be + or -
+        b = bconv - bdiff - bSp # check signs
         b += (self.C1 * G * (e / k)) * self.mesh.cell_volumes()
 
         A, b = self.relax(A, b, e)
