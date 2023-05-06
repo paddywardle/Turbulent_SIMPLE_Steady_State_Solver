@@ -183,7 +183,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         
         # turbulence systems
         gradU = self.gradU(uplus1, vplus1, zplus1, BC)
-        G = nut * self.DoubleInner(self.Symm(gradU), self.Symm(gradU))
+        G = 2 * nut * self.DoubleInner(self.Symm(gradU), self.Symm(gradU))
 
         Ak, bk = self.KDisc(k, e, Fpre, nueffk, G, BC)
         #k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-3)
@@ -193,8 +193,8 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         #e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-3)
         e_field = np.linalg.solve(Ae, be)
 
-        #res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
-        res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
+        res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
+        #res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
         return uplus1, vplus1, zplus1, p_field, k_field, e_field, nueff, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
@@ -243,6 +243,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
             u, v, w, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, w, p, k, e, veff, F, BC)
+            print(res_SIMPLE)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
