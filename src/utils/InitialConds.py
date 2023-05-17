@@ -6,7 +6,7 @@ from MeshParser import MeshParser
 def InitialConds():
 
     read = ReadFiles()
-    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, BC = read.ReadSettings('config/config.json')
+    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, BC = read.ReadSettings('config/config.json')
 
     mesh = MeshParser(f"MeshFiles/{directory}")
     num_cells = len(mesh.cells)

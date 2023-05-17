@@ -53,6 +53,7 @@ class LaplacianBCs:
                 elif i in self.mesh.boundaries['lowerWall']:
                     bp[cell] -= raP[i] * face_mag * BC['lowerWall'][3]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    bp[cell] -= raP[i] * face_mag * BC['frontAndBack'][3]
+                    pass
+                    #bp[cell] -= raP[i] * face_mag * BC['frontAndBack'][3]
 
         return Ap, bp

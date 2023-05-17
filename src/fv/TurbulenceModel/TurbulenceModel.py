@@ -24,38 +24,42 @@ class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
         self.sigmak = sigmak
         self.sigmaEps = sigmaEps
     
-    def KDisc(self, k, e, F, veffk, G, BC):
+    def KDisc(self, k, e, F, nu_face, nut_face, G, deltaT, BC):
 
-        veff_face = self.veff_face(veffk)
+        nueff_face = nu_face + nut_face / self.sigmak
 
+        Addt, bddt = self.Ddt(k, deltaT)
         Aconv, bconv = self.fvmDiv(F)
-        Adiff, bdiff = self.laplacian(veff_face)
+        Adiff, bdiff = self.laplacian(nueff_face)
+        
         Aconv, bconv = self.ConvMatKEBCs(Aconv, bconv, F, BC, 4)
-        Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, veff_face, BC, 4)
+        Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, nueff_face, BC, 4)
         
         ASp, bSp = self.Sp(e/k, k)
 
-        A = Aconv - Adiff + ASp # should ASp be + or -
-        b = bconv - bdiff - bSp # check signs
+        A = Addt + Aconv - Adiff + ASp # should ASp be + or -
+        b = bddt + bconv - bdiff - bSp # check signs
         b += G * self.mesh.cell_volumes()
 
         A, b = self.relax(A, b, k)
 
         return A, b
 
-    def EDisc(self, k, e, F, veffe, G, BC):
-        
-        veff_face = self.veff_face(veffe)
+    def EDisc(self, k, e, F, nu_face, nut_face, G, deltaT, BC):
 
+        nueff_face = nu_face + nut_face / self.sigmaEps
+
+        Addt, bddt = self.Ddt(k, deltaT)
         Aconv, bconv = self.fvmDiv(F)
-        Adiff, bdiff = self.laplacian(veff_face)
+        Adiff, bdiff = self.laplacian(nueff_face)
+        
         Aconv, bconv = self.ConvMatKEBCs(Aconv, bconv, F, BC, 5)
-        Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, veff_face, BC, 5)
+        Adiff, bdiff = self.DiffMatKEBCs(Adiff, bdiff, F, nueff_face, BC, 5)
         
         ASp, bSp = self.Sp(self.C2 * e/k, e)
 
-        A = Aconv - Adiff + ASp # should ASp be + or -
-        b = bconv - bdiff - bSp # check signs
+        A = Addt + Aconv - Adiff + ASp # should ASp be + or -
+        b = bddt + bconv - bdiff - bSp # check signs
         b += (self.C1 * G * (e / k)) * self.mesh.cell_volumes()
 
         A, b = self.relax(A, b, e)

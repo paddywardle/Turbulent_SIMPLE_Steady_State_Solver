@@ -20,13 +20,13 @@
                       "frontAndBack": [0, 0, 0, 0, 0, 0]},
         "BoundaryTypes":{"inlet": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue"],
                       "outlet": ["zeroGradient", "zeroGradient", "zeroGradient", "fixedValue", "zeroGradient", "zeroGradient"],
-                      "upperWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue"],
-                      "lowerWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue"],
+                      "upperWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
+                      "lowerWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
                       "frontAndBack": ["empty", "empty", "empty", "empty", "empty", "empty"]},
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 1e-6,
-            "its": 100
+            "its": 200
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
@@ -39,6 +39,9 @@
             "C3": 0.0,
             "sigmak": 1.0,
             "sigmaEps": 1.3
-        }
+        },
+	"WallFunctions":{
+	    "kap": 0.41
+	}
     }
 }

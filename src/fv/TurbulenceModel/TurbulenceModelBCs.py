@@ -61,11 +61,14 @@ class TurbulenceModelBCs:
                     A[cell, cell] += FN_cell # CHECK THIS
                     b[cell] -= FN_cell * d_mag * BC['outlet'][idx]
                 elif i in self.mesh.boundaries['upperWall']:
-                    b[cell] -= FN_cell * BC['upperWall'][idx]
+                    A[cell, cell] += FN_cell # CHECK THIS
+                    b[cell] -= FN_cell * d_mag * BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    b[cell] -= FN_cell * BC['lowerWall'][idx]
+                    A[cell, cell] += FN_cell # CHECK THIS
+                    b[cell] -= FN_cell * d_mag * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    b[cell] -= FN_cell * BC['frontAndBack'][idx]
+                    pass
+                    #b[cell] -= FN_cell * BC['frontAndBack'][idx]
         
         return A, b
 
@@ -110,13 +113,12 @@ class TurbulenceModelBCs:
                 elif i in self.mesh.boundaries['outlet']:
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['outlet'][idx]
                 elif i in self.mesh.boundaries['upperWall']:
-                    A[cell, cell] -= veff[i] * face_mag / d_mag
-                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['outlet'][idx]
+                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['upperWall'][idx]
                 elif i in self.mesh.boundaries['lowerWall']:
-                    A[cell, cell] -= veff[i] * face_mag / d_mag
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    A[cell, cell] -= veff[i] * face_mag / d_mag
-                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
+                    pass
+                    #A[cell, cell] -= veff[i] * face_mag / d_mag
+                    #b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
                     
         return A, b

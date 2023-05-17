@@ -136,7 +136,7 @@ class WriteFiles():
                     f.write(f"\t\ttype\t\t{BC[1][key][var]};\n")
                     f.write(f"\t\tvalue\t\tuniform {BC[0][key][var]};\n\t}}\n")
                     continue
-                f.write(f"\t\ttype\t\t{BC[1][key][0]};\n\t}}\n")
+                f.write(f"\t\ttype\t\t{BC[1][key][var]};\n\t}}\n")
             f.write("}")
 
     def WriteBoundaries(self, BC):

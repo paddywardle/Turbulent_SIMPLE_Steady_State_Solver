@@ -60,7 +60,8 @@ class MomentumSystemBCs:
                 elif i in self.mesh.boundaries['lowerWall']:
                     b[cell] -= FN_cell * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    b[cell] -= FN_cell * BC['frontAndBack'][idx]
+                    pass
+                    #b[cell] -= FN_cell * BC['frontAndBack'][idx]
         
         return A, b
 
@@ -117,7 +118,8 @@ class MomentumSystemBCs:
                     A[cell, cell] -= veff[i] * face_mag / d_mag
                     b[cell] -= (veff[i] * face_mag / d_mag) * BC['lowerWall'][idx]
                 elif i in self.mesh.boundaries['frontAndBack']:
-                    A[cell, cell] -= veff[i] * face_mag / d_mag
-                    b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
+                    pass
+                    #A[cell, cell] -= veff[i] * face_mag / d_mag
+                    #b[cell] -= (veff[i] * face_mag / d_mag) * BC['frontAndBack'][idx]
         
         return A, b

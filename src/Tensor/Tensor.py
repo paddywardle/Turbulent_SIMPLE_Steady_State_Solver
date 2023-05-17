@@ -33,11 +33,11 @@ class Tensor():
         
         return Symm
 
-    def DoubleInner(self, T1, T2):
-        
-        DoubleInner = T1 * T2
+    def magSqr(self, T1):
 
-        DoubleInner = DoubleInner.sum(axis=0)
+        DoubleInner = np.linalg.norm(T1, axis=0)
+
+        DoubleInner = np.square(DoubleInner)
         
         return DoubleInner
         

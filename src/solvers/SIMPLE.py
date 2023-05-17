@@ -7,20 +7,22 @@ from fv.MomentumEq.MomentumSystem import MomentumSystem
 from fv.PressureLaplacian.Laplacian import Laplacian
 from fv.fvMatrices.fvc.Grad import Grad
 from fv.TurbulenceModel.TurbulenceModel import TurbulenceModel
+from fv.TurbulenceModel.WallFunctions.WallFunctions import WallFunctions
 from fv.fvMatrices.fvMatrix import fvMatrix
 from Tensor.Tensor import Tensor
 
-class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor):
+class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor, WallFunctions):
 
     """
     Class to hold all the functionality for the Semi-Implicit Algorithm for Pressure-Linked Equations (SIMPLE)
     """
 
-    def __init__(self, writer, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps):
+    def __init__(self, writer, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps, kap):
         
         self.writer = writer
         #MomentumSystem.__init__(self, mesh, conv_scheme, alpha_u)
         #Laplacian.__init__(self, mesh)
+        WallFunctions.__init__(self, mesh, Cmu, kap)
         TurbulenceModel.__init__(self, mesh, conv_scheme, alpha_u, Cmu, C1, C2, C3, sigmak, sigmaEps)
         fvMatrix.__init__(self, mesh)
         self.viscosity = viscosity
@@ -92,7 +94,7 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
 
         return np.linalg.norm(b - np.matmul(A, u))
     
-    def SIMPLE_loop(self, u, v, z, p, k, e, nu, F, BC):
+    def SIMPLE_loop(self, u, v, z, p, k, e, nu_list, F, BC):
 
         """
         Function to simulate singular SIMPLE loop that can be repeatedly called.
@@ -129,17 +131,14 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         k = k.copy()
         e = e.copy()
 
-        # Project viscosity onto faces
-        nut = self.TurbulentVisc(k, e)
-        nueff = nu  + nut
-        nueffk = nu + nut / self.sigmak
-        nueffEps = nu + nut / self.sigmaEps
-        nueff_face = self.veff_face(nueff)
+        nu, nut, nueff_face = nu_list
+        nu_face = self.veff_face(nu)
+        nut_face = self.veff_face(nut)
         
         # Momentum Predictor
-        Ax, bx = self.MomentumDisc(u, F, nueff_face, 'u', BC)
-        Ay, by = self.MomentumDisc(v, F, nueff_face, 'v', BC)
-        Az, bz = self.MomentumDisc(z, F, nueff_face, 'w', BC)
+        Ax, bx = self.MomentumDisc(u, F, nueff_face, 'u', 0, BC)
+        Ay, by = self.MomentumDisc(v, F, nueff_face, 'v', 0, BC)
+        Az, bz = self.MomentumDisc(z, F, nueff_face, 'w', 0, BC)
 
         #uplus1, exitcode = bicgstab(Ax, bx, x0=u, tol=1e-7)
         #vplus1, exitcode = bicgstab(Ay, by, x0=v, tol=1e-7)
@@ -183,20 +182,27 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         
         # turbulence systems
         gradU = self.gradU(uplus1, vplus1, zplus1, BC)
-        G = 2 * nut * self.DoubleInner(self.Symm(gradU), self.Symm(gradU))
+        G = 2 * nut * self.magSqr(self.Symm(gradU))
+        G, e = self.kWallFunction(uplus1, vplus1, zplus1, G, k, e, nu_face, nueff_face, BC)
 
-        Ak, bk = self.KDisc(k, e, Fpre, nueffk, G, BC)
-        #k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-3)
-        k_field = np.linalg.solve(Ak, bk)
-
-        Ae, be = self.EDisc(k, e, Fpre, nueffEps, G, BC)
+        Ae, be = self.EDisc(k, e, Fpre, nu_face, nut_face, G, 0, BC)
+        Ae, be= self.eWallFunction(Ae, be, k, e, nu_face, BC)
         #e_field, exitcode = bicgstab(Ae, be, x0=e, tol=1e-3)
         e_field = np.linalg.solve(Ae, be)
 
+        Ak, bk = self.KDisc(k, e, Fpre, nu_face, nut_face, G, 0, BC)
+        #k_field, exitcode = bicgstab(Ak, bk, x0=k, tol=1e-3)
+        k_field = np.linalg.solve(Ak, bk)
+
+        # viscosity wall function
+        nut_face = self.nutWallFunction(nu_face, nut_face, k, BC)
+        nueff_face = nu_face + nut_face
+        nu_list = [nu, nut, nueff_face]
+        
         res_SIMPLE = [self.residual(Ax, bx, uplus1), self.residual(Ay, bx, vplus1)]
         #res_SIMPLE = [np.linalg.norm(u-uplus1), np.linalg.norm(v-vplus1)]
 
-        return uplus1, vplus1, zplus1, p_field, k_field, e_field, nueff, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
+        return uplus1, vplus1, zplus1, p_field, k_field, e_field, nu_list, Fcorr, res_SIMPLE, resx_momentum, resy_momentum, res_pressure
     
     def iterate(self, u, v, w, p, k, e, BC, tol=1e-6, maxIts=100):
     
@@ -237,13 +243,17 @@ class SIMPLE(MomentumSystem, Laplacian, TurbulenceModel, fvMatrix, Grad, Tensor)
         res_pressure_ls = []
         its = 0
 
-        veff = self.EffectiveVisc(k, e, 1)
+        # Project viscosity onto faces
+        nu = self.viscosity * np.ones((self.mesh.num_cells(),))
+        nut = self.TurbulentVisc(k, e)
+        nut_face = self.nutWallFunction(self.veff_face(nu), self.veff_face(nut), k, BC)
+        nueff_face = self.veff_face(nu) + nut_face
+        nu_list = [nu, nut, nueff_face]
 
         # SIMPLE loop - will break if residual is less than tolerance
         for i in range(maxIts):
             print("Iteration: " + str(i+1))
-            u, v, w, p, k, e, veff, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, w, p, k, e, veff, F, BC)
-            print(res_SIMPLE)
+            u, v, w, p, k, e, nu_list, F, res_SIMPLE, resx_momentum, resy_momentum, res_pressure = self.SIMPLE_loop(u, v, w, p, k, e, nu_list, F, BC)
             res_SIMPLE_ls.append(res_SIMPLE)
             resx_momentum_ls.append(resx_momentum)
             resy_momentum_ls.append(resy_momentum)
