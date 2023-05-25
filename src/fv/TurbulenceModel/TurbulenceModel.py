@@ -2,11 +2,12 @@ import numpy as np
 from fv.TurbulenceModel.TurbulenceModelBCs import TurbulenceModelBCs
 from fv.fvMatrices.fvm.SuSp import SuSp
 from fv.fvMatrices.fvc.Grad import Grad
+from fv.fvMatrices.fvm.Ddt import Ddt
 from fv.fvMatrices.fvc.Div import Div as fvcDiv
 from fv.fvMatrices.fvm.Div import Div as fvmDiv
 from fv.fvMatrices.fvMatrix import fvMatrix
 
-class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
+class TurbulenceModel(Ddt, fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
 
     """
     Class to discretise the k-e turbulence model equations to produce a linear system, using a finite volume discretisation approach.
@@ -28,7 +29,7 @@ class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
 
         nueff_face = nu_face + nut_face / self.sigmak
 
-        Addt, bddt = self.Ddt(k, deltaT)
+        Addt, bddt = self.ddt(k, deltaT)
         Aconv, bconv = self.fvmDiv(F)
         Adiff, bdiff = self.laplacian(nueff_face)
         
@@ -49,7 +50,7 @@ class TurbulenceModel(fvmDiv, fvcDiv, SuSp, fvMatrix, TurbulenceModelBCs):
 
         nueff_face = nu_face + nut_face / self.sigmaEps
 
-        Addt, bddt = self.Ddt(k, deltaT)
+        Addt, bddt = self.ddt(k, deltaT)
         Aconv, bconv = self.fvmDiv(F)
         Adiff, bdiff = self.laplacian(nueff_face)
         
