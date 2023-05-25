@@ -29,8 +29,8 @@ class MomentumSystem(Ddt, fvmDiv, Laplacian, fvMatrix, MomentumSystemBCs):
             np.array: N x N matrix defining contributions of convective and diffusion terms to the linear system.
 
         """
-
-        Addt, bddt = self.Ddt(u, deltaT)
+        
+        Addt, bddt = self.ddt(u, deltaT)
         Aconv, bconv = self.fvmDiv(F)
         Adiff, bdiff = self.laplacian(veff)
 
