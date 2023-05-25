@@ -6,26 +6,26 @@
         "y1": 0.1,
         "z0": 0.0,
         "z1": 0.01,
-        "MeshFile": "backward_step_smallest"
+        "MeshFile": "backward_step_bigger"
     },
     "SIMULATION":{
         "Re": 4000,
 	"viscosity": 1.5e-5,
-        "alpha_u": 0.9,
+        "alpha_u": 0.7,
         "alpha_p": 0.3,
-        "Boundaries":{"inlet": [1, 0, 0, 0, 0.00135, 0.003],
-                      "outlet": [0, 0, 0, 0, 0, 0],
-                      "upperWall": [0, 0, 0, 0, 0, 0],
-                      "lowerWall": [0, 0, 0, 0, 0, 0],
-                      "frontAndBack": [0, 0, 0, 0, 0, 0]},
-        "BoundaryTypes":{"inlet": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue"],
-                      "outlet": ["zeroGradient", "zeroGradient", "zeroGradient", "fixedValue", "zeroGradient", "zeroGradient"],
-                      "upperWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
-                      "lowerWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "zeroGradient", "zeroGradient"],
-                      "frontAndBack": ["empty", "empty", "empty", "empty", "empty", "empty"]},
+        "Boundaries":{"inlet": [1, 0, 0, 0, 0.00135, 0.003, 0],
+                      "outlet": [0, 0, 0, 0, 0, 0, 0],
+                      "upperWall": [0, 0, 0, 0, 0, 0, 0],
+                      "lowerWall": [0, 0, 0, 0, 0, 0, 0],
+                      "frontAndBack": [0, 0, 0, 0, 0, 0, 0]},
+        "BoundaryTypes":{"inlet": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "fixedValue", "fixedValue", "calculated"],
+			 "outlet": ["zeroGradient", "zeroGradient", "zeroGradient", "fixedValue", "zeroGradient", "zeroGradient", "calculated"],
+			 "upperWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "kqRWallFunction", "epsilonWallFunction", "nutkWallFunction"],
+			 "lowerWall": ["fixedValue", "fixedValue", "fixedValue", "zeroGradient", "kqRWallFunction", "epsilonWallFunction", "nutkWallFunction"],
+			 "frontAndBack": ["empty", "empty", "empty", "empty", "empty", "empty", "empty"]},
         "SIMPLE":{
             "conv_scheme": "upwind",
-            "tol": 1e-6,
+            "tol": 0.1,
             "its": 200
         },
         "Gauss-Seidel":{
@@ -41,7 +41,8 @@
             "sigmaEps": 1.3
         },
 	"WallFunctions":{
-	    "kap": 0.41
+	    "kap": 0.41,
+	    "E": 9.8
 	}
     }
 }
