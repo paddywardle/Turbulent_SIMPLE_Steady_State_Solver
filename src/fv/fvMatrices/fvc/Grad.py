@@ -47,8 +47,8 @@ class Grad():
 
                 cmptGrad += 1
 
-        for cmpt in range(3):
-            p_grad[cmpt] /= V
+        # for cmpt in range(3):
+        #     p_grad[cmpt] /= V
 
         return p_grad
 

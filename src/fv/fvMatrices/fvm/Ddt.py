@@ -10,7 +10,7 @@ class Ddt():
 
         self.mesh = mesh
 
-    def fvmDdt(self, x, deltaT):
+    def ddt(self, x, deltaT):
 
         """
         This function discretises the temporal term to get the diagonal, off-diagonal and source contributions to the linear system for the convection term.
@@ -29,16 +29,12 @@ class Ddt():
 
         cell_volumes = self.mesh.cell_volumes()
 
-        for cell in range(self.mesh.num_cells()):
+        # for cell in range(self.mesh.num_cells()):
 
-            if neighbour == -1:
-                continue
+        #     V = cell_volumes[cell]
 
-            FN_cell = F[i]
-            V = self.mesh.cell_volumes()[cell]
+        #     A[cell, cell] = V / deltaT
 
-            A[cell, cell] = V / deltaT
-
-            b[cell] = (V * x[cell]) / deltaT
+        #     b[cell] = (V * x[cell]) / deltaT
 
         return A, b

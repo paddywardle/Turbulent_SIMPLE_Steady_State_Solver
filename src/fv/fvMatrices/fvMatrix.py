@@ -234,11 +234,7 @@ class fvMatrix(Tensor):
 
     def TurbulentVisc(self, k_arr, e_arr):
 
-        vt = np.zeros(self.mesh.num_cells(),)
-
-        for i, (k, e) in enumerate(zip(k_arr, e_arr)):
-
-            vt[i] = self.Cmu * ((k**2)/e)
+        vt = self.Cmu * (np.square(k_arr) / e_arr)
 
         return vt.flatten()
 
