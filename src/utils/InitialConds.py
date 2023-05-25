@@ -6,7 +6,7 @@ from MeshParser import MeshParser
 def InitialConds():
 
     read = ReadFiles()
-    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, BC = read.ReadSettings('config/config.json')
+    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, E, BC = read.ReadSettings('config/config.json')
 
     mesh = MeshParser(f"MeshFiles/{directory}")
     num_cells = len(mesh.cells)
@@ -18,8 +18,6 @@ def InitialConds():
     p_field = np.zeros((num_cells, 1))
     k_field = np.ones((num_cells, 1)) * 0.00135
     e_field = np.ones((num_cells, 1)) * 0.003
-    #k_field = (3/2) * np.square(BC[0]['inlet'][4] * u_field)
-    #e_field = ((Cmu ** 0.75) * np.power(k_field, 1.5))/0.1
     
     WriteVectorField(f"InitialConds/{directory}/U", U)
     WriteScalarField(f"InitialConds/{directory}/p", p_field)
@@ -43,5 +41,5 @@ def WriteScalarField(filename, data):
             f.write("\n")
 
 if __name__ == "__main__":
-
+    
     InitialConds()

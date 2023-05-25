@@ -52,10 +52,11 @@ class ReadFiles():
         sigmak = simulation_sets["Turbulence"]["sigmak"]
         sigmaEps = simulation_sets["Turbulence"]["sigmaEps"]
         kap = simulation_sets["WallFunctions"]["kap"]
+        E = simulation_sets["WallFunctions"]["E"]
         BC = simulation_sets["Boundaries"]
         BCTypes = simulation_sets["BoundaryTypes"]
 
-        return Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, [BC, BCTypes]
+        return Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, tol_GS, maxIts, L, MeshFile, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, E, [BC, BCTypes]
     
     def ReadVectorField(self, filename):
 

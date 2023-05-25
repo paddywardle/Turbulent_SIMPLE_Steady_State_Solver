@@ -27,7 +27,7 @@ if __name__ == "__main__":
     write = WriteFiles(SIM_num)
 
     # Read settings
-    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, BC = read.ReadSettings('config/config.json')
+    Re, viscosity, alpha_u, alpha_p, conv_scheme, SIMPLE_tol, SIMPLE_its, GS_tol, maxIts, L, directory, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, E, BC = read.ReadSettings('config/config.json')
 
     # Write Boundaries files
     write.CreateFileStructure(directory)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # timing the simulation
     start_time = time.perf_counter()
 
-    simple = SIMPLE(write, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps, kap)
+    simple = SIMPLE(write, mesh, conv_scheme, viscosity, alpha_u, alpha_p, Cmu, C1, C2, C3, sigmak, sigmaEps, kap, E)
 
     u, v, w, p, k, e, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, iterations = simple.iterate(u_field, v_field, w_field, p_field, k_field, e_field, BC[0], SIMPLE_tol, SIMPLE_its)
 

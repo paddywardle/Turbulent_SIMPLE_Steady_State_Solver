@@ -120,6 +120,8 @@ class WriteFiles():
             var = 4
         elif filename == "epsilon":
             var = 5
+        elif filename == "nut":
+            var = 6
 
         with open(f"OpenFOAM_Headers/{filename}", "r") as f:
             header = f.readlines()
@@ -132,7 +134,7 @@ class WriteFiles():
             f.write("\nboundaryField\n{\n")
             for key in BC[1].keys():
                 f.write(f"\t{key}\n\t{{\n")
-                if BC[1][key][var] == "fixedValue":
+                if BC[1][key][var] == "fixedValue" or BC[1][key][var] == "kqRWallFunction" or BC[1][key][var] == "epsilonWallFunction" or BC[1][key][var] == "nutkWallFunction":
                     f.write(f"\t\ttype\t\t{BC[1][key][var]};\n")
                     f.write(f"\t\tvalue\t\tuniform {BC[0][key][var]};\n\t}}\n")
                     continue
@@ -148,8 +150,9 @@ class WriteFiles():
         self.WriteScalarBoundaries(BC, "p")
         self.WriteScalarBoundaries(BC, "k")
         self.WriteScalarBoundaries(BC, "epsilon")
+        self.WriteScalarBoundaries(BC, "nut")
 
-    def WriteIteration(self, u_field, v_field, z_field, p_field, k_field, e_field, F, it):
+    def WriteIteration(self, u_field, v_field, z_field, p_field, k_field, e_field, nut_field, F, it):
 
         if not os.path.exists(f"Results/SIM_{self.SIM_num}"):
             os.mkdir(f"Results/SIM_{self.SIM_num}")
@@ -161,6 +164,7 @@ class WriteFiles():
         self.WriteVolScalarField(p_field, "p", it)
         self.WriteVolScalarField(k_field, "k", it)
         self.WriteVolScalarField(e_field, "epsilon", it)
+        self.WriteVolScalarField(nut_field, "nut", it)
         self.WriteVolScalarField(F, "phi", it)
 
     def WriteResults(self, u_field, v_field, z_field, p_field, k_field, e_field, F, res_SIMPLE_ls, resx_momentum_ls, resy_momentum_ls, res_pressure, sim_time, resolution, iterations):
