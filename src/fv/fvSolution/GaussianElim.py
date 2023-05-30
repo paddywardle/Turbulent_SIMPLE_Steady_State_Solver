@@ -1,6 +1,6 @@
 import numpy as np
 
-class GaussianElimination():
+class GaussianElim():
 
     def ge(self, A):
 

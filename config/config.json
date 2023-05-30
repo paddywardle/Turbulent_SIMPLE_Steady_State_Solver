@@ -26,7 +26,7 @@
         "SIMPLE":{
             "conv_scheme": "upwind",
             "tol": 0.1,
-            "its": 200
+            "its": 5
         },
         "Gauss-Seidel":{
             "tol": 1e-6,
