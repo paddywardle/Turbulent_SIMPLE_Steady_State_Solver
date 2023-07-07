@@ -1,8 +1,4 @@
 plots/plot_results/*
-Results/*
-InitialConds/*
-MeshFiles/*
-OpenFOAM_Headers/*
 *~
 
 # Byte-compiled / optimized / DLL files
